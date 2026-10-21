@@ -5,14 +5,14 @@
 namespace Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class addDescriptionField : Migration
+    public partial class AddUserPassword : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "Description",
-                table: "Products",
+                name: "PasswordHash",
+                table: "Users",
                 type: "TEXT",
                 nullable: false,
                 defaultValue: "");
@@ -22,8 +22,8 @@ namespace Infrastructure.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Description",
-                table: "Products");
+                name: "PasswordHash",
+                table: "Users");
         }
     }
 }
