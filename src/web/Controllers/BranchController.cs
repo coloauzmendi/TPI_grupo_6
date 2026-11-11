@@ -1,7 +1,9 @@
-using Application.Interfaces;
+﻿using Application.Interfaces;
+using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using web.Extensions;
 
 namespace web.Controllers;
 
@@ -11,54 +13,48 @@ namespace web.Controllers;
 public class BranchController : ControllerBase
 {
     private readonly IBranchRepository _branchRepository;
-    private readonly ICompanyRepository _companyRepository;
     private readonly IUserRepository _userRepository;
+    private readonly AccessService _accessService;
 
     public BranchController(
         IBranchRepository branchRepository,
-        ICompanyRepository companyRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        AccessService accessService)
     {
         _branchRepository = branchRepository;
-        _companyRepository = companyRepository;
         _userRepository = userRepository;
+        _accessService = accessService;
     }
 
+    // Dueño: las sucursales de sus empresas. Empleado: solo la suya.
     [HttpGet]
     public ActionResult<List<Branch>> GetAll()
     {
-        return Ok(_branchRepository.GetAll());
+        return Ok(_accessService.GetBranches(User.GetCuit()));
     }
 
     [HttpGet("{id}")]
     public ActionResult<Branch> GetById(Guid id)
     {
-        var branch = _branchRepository.GetById(id);
-        if (branch is null)
-            return NotFound();
-
-        return Ok(branch);
+        return Ok(_accessService.EnsureBranchAccess(User.GetCuit(), id));
     }
 
+    [Authorize(Roles = "Owner")]
     [HttpPost]
     public ActionResult<Branch> Create(Branch newBranch)
     {
-        if (_companyRepository.GetById(newBranch.CompanyId) is null)
-            return BadRequest("La empresa indicada no existe.");
+        _accessService.EnsureCompanyOwner(User.GetCuit(), newBranch.CompanyId);
 
         var created = _branchRepository.Create(newBranch);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
+    [Authorize(Roles = "Owner")]
     [HttpPut("{id}")]
     public IActionResult Update(Guid id, Branch updatedBranch)
     {
-        var branch = _branchRepository.GetById(id);
-        if (branch is null)
-            return NotFound();
-
-        if (_companyRepository.GetById(updatedBranch.CompanyId) is null)
-            return BadRequest("La empresa indicada no existe.");
+        var branch = _accessService.EnsureBranchAccess(User.GetCuit(), id);
+        _accessService.EnsureCompanyOwner(User.GetCuit(), updatedBranch.CompanyId);
 
         branch.Locality = updatedBranch.Locality;
         branch.Address = updatedBranch.Address;
@@ -69,15 +65,15 @@ public class BranchController : ControllerBase
         return NoContent();
     }
 
+    // Baja lógica: también se dan de baja los empleados asignados a la sucursal
+    [Authorize(Roles = "Owner")]
     [HttpDelete("{id}")]
     public IActionResult Delete(Guid id)
     {
-        var branch = _branchRepository.GetById(id);
-        if (branch is null)
-            return NotFound();
+        var branch = _accessService.EnsureBranchAccess(User.GetCuit(), id);
 
-        if (_userRepository.GetByBranch(id).Count > 0)
-            return Conflict("La sucursal tiene empleados asignados.");
+        foreach (var employee in _userRepository.GetByBranch(id))
+            _userRepository.Delete(employee);
 
         _branchRepository.Delete(branch);
         return NoContent();

@@ -1,4 +1,4 @@
-using Application.Interfaces;
+﻿using Application.Interfaces;
 using Domain.Entities;
 using Infraestructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -16,12 +16,19 @@ namespace Infraestructure.Repositories
 
         public List<Company> GetAll()
         {
-            return _context.Companies.ToList();
+            return _context.Companies.Where(x => x.IsActive).ToList();
         }
 
         public Company? GetById(Guid id)
         {
-            return _context.Companies.FirstOrDefault(x => x.Id == id);
+            return _context.Companies.FirstOrDefault(x => x.Id == id && x.IsActive);
+        }
+
+        public List<Company> GetByOwner(string ownerCuit)
+        {
+            return _context.Companies
+                .Where(c => c.IsActive && c.Owners.Any(o => o.Cuit == ownerCuit))
+                .ToList();
         }
 
         public Company Create(Company newCompany)
@@ -40,7 +47,8 @@ namespace Infraestructure.Repositories
 
         public void Delete(Company companyToDelete)
         {
-            _context.Companies.Remove(companyToDelete);
+            companyToDelete.IsActive = false; // baja lógica
+            _context.Companies.Update(companyToDelete);
             _context.SaveChanges();
         }
 
@@ -49,6 +57,7 @@ namespace Infraestructure.Repositories
             return _context.Companies
                 .Where(c => c.Id == companyId)
                 .SelectMany(c => c.Owners)
+                .Where(o => o.IsActive)
                 .ToList();
         }
 

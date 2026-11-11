@@ -1,4 +1,4 @@
-using Application.Interfaces;
+﻿using Application.Interfaces;
 using Application.Models;
 using Domain.Entities;
 using Domain.Enums;
@@ -38,7 +38,8 @@ namespace Application.Services
             return company;
         }
 
-        public Company Create(CompanyRequest request)
+        // El usuario que crea la empresa queda como su dueño
+        public Company Create(CompanyRequest request, string creatorCuit)
         {
             if (string.IsNullOrWhiteSpace(request.Name))
             {
@@ -50,7 +51,10 @@ namespace Application.Services
                 Name = request.Name
             };
 
-            return _companyRepository.Create(newCompany);
+            Company created = _companyRepository.Create(newCompany);
+            AddOwner(created.Id, creatorCuit);
+
+            return created;
         }
 
         public void Update(Guid id, CompanyRequest request)
@@ -66,20 +70,23 @@ namespace Application.Services
             _companyRepository.Update(company);
         }
 
+        // Baja lógica: también se dan de baja las sucursales y sus empleados
         public void Delete(Guid id)
         {
             Company company = GetById(id);
 
-            // Al borrar la empresa se borran sus sucursales, así que no pueden tener empleados
-            List<Branch> branches = _branchRepository.GetByCompany(id);
-            if (branches.Any(b => _userRepository.GetByBranch(b.Id).Count > 0))
+            foreach (Branch branch in _branchRepository.GetByCompany(id))
             {
-                throw new AppValidationException("La empresa tiene sucursales con empleados asignados.");
+                foreach (User employee in _userRepository.GetByBranch(branch.Id))
+                {
+                    _userRepository.Delete(employee);
+                }
+
+                _branchRepository.Delete(branch);
             }
 
             _companyRepository.Delete(company);
         }
-
         // Dueños de la empresa
 
         public List<User> GetOwners(Guid companyId)

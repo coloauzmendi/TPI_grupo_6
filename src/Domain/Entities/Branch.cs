@@ -1,3 +1,4 @@
+﻿using System.Text.Json.Serialization;
 using Domain.Enums;
 
 namespace Domain.Entities
@@ -13,5 +14,9 @@ namespace Domain.Entities
         public Industry Industry { get; set; }
 
         public Guid CompanyId { get; set; }
+
+        // Baja lógica
+        [JsonIgnore]
+        public bool IsActive { get; set; } = true;
     }
 }

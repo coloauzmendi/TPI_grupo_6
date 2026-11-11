@@ -1,0 +1,46 @@
+:root {
+  --navy: #111a2e;
+  --blue: #1f66e0;
+  --blue-dark: #174fb0;
+  --green: #1f9d55;
+  --amber: #e8961c;
+  --red: #dc3a3a;
+  --purple: #7444e0;
+  --teal: #1b9688;
+  --indigo: #4f52d6;
+  --text: #172033;
+  --muted: #667085;
+  --border: #e6e9ef;
+  --bg: #f3f5f8;
+}
+
+html, body, #root { margin: 0; height: 100%; }
+body { background: var(--bg); font-family: 'Figtree', system-ui, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { color: var(--blue-dark); text-decoration: underline; }
+input, select, button { font-family: inherit; }
+input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+button:disabled { cursor: not-allowed; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cfd5df; border-radius: 10px; border: 2px solid var(--bg); }
+
+@keyframes gin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Íconos de Material Symbols (el texto del span es el nombre del ícono) */
+.icon {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal;
+  text-transform: none; display: inline-block; white-space: nowrap;
+  font-feature-settings: 'liga'; -webkit-font-feature-settings: 'liga';
+}
+
+/* Estados hover que en el diseño original eran "style-hover" */
+.hv-primary:hover:not(:disabled) { background: var(--blue-dark) !important; }
+.hv-green:hover:not(:disabled) { background: #18864a !important; }
+.hv-red:hover:not(:disabled) { background: #c22e2e !important; }
+.hv-border:hover:not(:disabled) { border-color: var(--blue) !important; }
+.hv-link:hover:not(:disabled) { border-color: var(--blue) !important; color: var(--blue) !important; }
+.hv-danger:hover:not(:disabled) { border-color: var(--red) !important; color: var(--red) !important; }
+.hv-lift { transition: transform .15s; }
+.hv-lift:hover { transform: translateY(-3px); }

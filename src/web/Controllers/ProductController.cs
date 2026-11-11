@@ -1,7 +1,10 @@
-using Application.Interfaces;
+﻿using Application.Interfaces;
+using Application.Models;
+using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using web.Extensions;
 
 namespace web.Controllers;
 
@@ -11,10 +14,12 @@ namespace web.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _productRepository;
+    private readonly PriceService _priceService;
 
-    public ProductController(IProductRepository productRepository)
+    public ProductController(IProductRepository productRepository, PriceService priceService)
     {
         _productRepository = productRepository;
+        _priceService = priceService;
     }
 
     [HttpGet]
@@ -33,6 +38,7 @@ public class ProductController : ControllerBase
         return Ok(product);
     }
 
+    [Authorize(Roles = "Owner")]
     [HttpPost]
     public ActionResult<Product> Create(Product newProduct)
     {
@@ -43,6 +49,7 @@ public class ProductController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
+    [Authorize(Roles = "Owner")]
     [HttpPut("{id}")]
     public IActionResult Update(Guid id, Product updatedProduct)
     {
@@ -63,6 +70,7 @@ public class ProductController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "Owner")]
     [HttpDelete("{id}")]
     public IActionResult Delete(Guid id)
     {
@@ -72,5 +80,13 @@ public class ProductController : ControllerBase
 
         _productRepository.Delete(product);
         return NoContent();
+    }
+
+    // Actualización masiva de precios; devuelve cuántos productos cambiaron
+    [Authorize(Roles = "Owner")]
+    [HttpPost("prices")]
+    public ActionResult<int> UpdatePrices(PriceUpdateRequest request)
+    {
+        return Ok(_priceService.Update(User.GetCuit(), request));
     }
 }

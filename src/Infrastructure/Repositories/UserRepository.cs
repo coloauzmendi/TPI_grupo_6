@@ -1,4 +1,4 @@
-using Application.Interfaces;
+﻿using Application.Interfaces;
 using Domain.Entities;
 using Infraestructure.Data;
 
@@ -15,9 +15,10 @@ namespace Infraestructure.Repositories
 
         public List<User> GetAll()
         {
-            return _context.Users.ToList();
+            return _context.Users.Where(x => x.IsActive).ToList();
         }
 
+        // Devuelve también los usuarios dados de baja: el CUIT sigue ocupado
         public User? GetByCuit(string cuit)
         {
             return _context.Users.FirstOrDefault(x => x.Cuit == cuit);
@@ -25,7 +26,7 @@ namespace Infraestructure.Repositories
 
         public List<User> GetByBranch(Guid branchId)
         {
-            return _context.Users.Where(x => x.BranchId == branchId).ToList();
+            return _context.Users.Where(x => x.BranchId == branchId && x.IsActive).ToList();
         }
 
         public User Create(User newUser)
@@ -42,9 +43,11 @@ namespace Infraestructure.Repositories
             _context.SaveChanges();
         }
 
+        // Baja lógica
         public void Delete(User userToDelete)
         {
-            _context.Users.Remove(userToDelete);
+            userToDelete.IsActive = false;
+            _context.Users.Update(userToDelete);
             _context.SaveChanges();
         }
     }

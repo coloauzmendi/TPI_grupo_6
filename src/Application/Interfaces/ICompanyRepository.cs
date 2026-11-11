@@ -1,4 +1,4 @@
-using Domain.Entities;
+﻿using Domain.Entities;
 
 namespace Application.Interfaces
 {
@@ -6,6 +6,7 @@ namespace Application.Interfaces
     {
         List<Company> GetAll();
         Company? GetById(Guid id);
+        List<Company> GetByOwner(string ownerCuit);
         Company Create(Company newCompany);
         void Update(Company updatedCompany);
         void Delete(Company companyToDelete);

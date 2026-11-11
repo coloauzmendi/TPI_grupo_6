@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Application.Interfaces;
@@ -35,8 +35,8 @@ namespace Infraestructure.Services
 
             User? user = _userRepository.GetByCuit(request.Cuit);
 
-            // Usuarios creados antes de tener contraseña no pueden loguearse
-            if (user is null || string.IsNullOrEmpty(user.PasswordHash))
+            // Usuarios dados de baja o creados antes de tener contraseña no pueden loguearse
+            if (user is null || !user.IsActive || string.IsNullOrEmpty(user.PasswordHash))
                 return null;
 
             var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);

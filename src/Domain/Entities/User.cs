@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using Domain.Enums;
 
 namespace Domain.Entities
@@ -19,6 +19,10 @@ namespace Domain.Entities
 
         // Solo para Employee: sucursal a la que está asignado (nula si es Owner)
         public Guid? BranchId { get; set; }
+
+        // Baja lógica: un usuario inactivo no puede iniciar sesión ni aparece en los listados
+        [JsonIgnore]
+        public bool IsActive { get; set; } = true;
 
         // Solo para Owner: empresas de las que es dueño (N:M)
         [JsonIgnore]

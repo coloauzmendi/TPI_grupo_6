@@ -1,4 +1,4 @@
-using Domain.Entities;
+﻿using Domain.Entities;
 
 namespace Application.Interfaces
 {
@@ -8,6 +8,7 @@ namespace Application.Interfaces
         Product? GetById(Guid id);
         Product Create(Product newProduct);
         void Update(Product updatedProduct);
+        void UpdateRange(List<Product> updatedProducts);
         void Delete(Product productToDelete);
     }
 }

@@ -1,4 +1,4 @@
-using Application.Interfaces;
+﻿using Application.Interfaces;
 using Domain.Entities;
 using Infraestructure.Data;
 
@@ -15,17 +15,17 @@ namespace Infraestructure.Repositories
 
         public List<Branch> GetAll()
         {
-            return _context.Branches.ToList();
+            return _context.Branches.Where(x => x.IsActive).ToList();
         }
 
         public Branch? GetById(Guid id)
         {
-            return _context.Branches.FirstOrDefault(x => x.Id == id);
+            return _context.Branches.FirstOrDefault(x => x.Id == id && x.IsActive);
         }
 
         public List<Branch> GetByCompany(Guid companyId)
         {
-            return _context.Branches.Where(x => x.CompanyId == companyId).ToList();
+            return _context.Branches.Where(x => x.CompanyId == companyId && x.IsActive).ToList();
         }
 
         public Branch Create(Branch newBranch)
@@ -42,9 +42,11 @@ namespace Infraestructure.Repositories
             _context.SaveChanges();
         }
 
+        // Baja lógica
         public void Delete(Branch branchToDelete)
         {
-            _context.Branches.Remove(branchToDelete);
+            branchToDelete.IsActive = false;
+            _context.Branches.Update(branchToDelete);
             _context.SaveChanges();
         }
     }

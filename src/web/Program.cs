@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
@@ -44,23 +44,30 @@ builder.Services.AddSwaggerGen(options =>
 
 // Agregar el ApplicationContext al contenedor de servicios
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-var connection = new SqliteConnection(connectionString);
-connection.Open();
 
-using (var command = connection.CreateCommand())
+// El journal_mode se configura una sola vez al arrancar, con una conexión aparte
+using (var setupConnection = new SqliteConnection(connectionString))
 {
+    setupConnection.Open();
+    using var command = setupConnection.CreateCommand();
     command.CommandText = "PRAGMA journal_mode = DELETE;";
     command.ExecuteNonQuery();
 }
 
-builder.Services.AddDbContext<ApplicationContext>(dbContextOptions => dbContextOptions.UseSqlite(connection));
+// Cada DbContext (uno por request) abre su propia conexión: compartir una sola entre requests
+// simultáneas provoca "SQLite Error 5: unable to delete/modify user-function due to active statements"
+builder.Services.AddDbContext<ApplicationContext>(dbContextOptions => dbContextOptions.UseSqlite(connectionString));
 
 // Autenticación con JWT: qué se verifica del token que viene en cada request y contra qué valores
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>
     {
+        // Se conservan los nombres de los claims del token ("sub", "role") en vez de mapearlos a los de Microsoft
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new()
         {
+            NameClaimType = "sub",
+            RoleClaimType = "role", // permite usar [Authorize(Roles = "Owner")]
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateIssuerSigningKey = true, // la fecha de expiración se valida por defecto
@@ -73,15 +80,32 @@ builder.Services.AddAuthentication("Bearer")
 builder.Services.Configure<AuthenticationServiceOptions>(
     builder.Configuration.GetSection(AuthenticationServiceOptions.AuthenticationService));
 
+// El FrontEnd (Vite) corre en otro origen, así que hay que permitirlo
+const string FrontendCorsPolicy = "Frontend";
+builder.Services.AddCors(options =>
+    options.AddPolicy(FrontendCorsPolicy, policy => policy
+        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:5173"])
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+
 // Configurar repositorios como Scoped
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IBranchRepository, BranchRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IBranchStockRepository, BranchStockRepository>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IPurchaseRepository, PurchaseRepository>();
 
 // Configurar servicios como Scoped
 builder.Services.AddScoped<CompanyService>();
+builder.Services.AddScoped<AccessService>();
+builder.Services.AddScoped<MeService>();
+builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<SaleService>();
+builder.Services.AddScoped<PurchaseService>();
+builder.Services.AddScoped<PriceService>();
+builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ICustomAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -109,6 +133,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors(FrontendCorsPolicy);
 
 // Primero se autentica (se valida el JWT) y después se autoriza
 app.UseAuthentication();
