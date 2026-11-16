@@ -1,6 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
-using Domain.Entities;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -12,9 +11,9 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly UserService _userService;
+    private readonly IUserService _userService;
 
-    public UserController(UserService userService)
+    public UserController(IUserService userService)
     {
         _userService = userService;
     }
@@ -22,14 +21,13 @@ public class UserController : ControllerBase
     // Empleados de las sucursales del dueño
     [Authorize(Roles = "Owner")]
     [HttpGet]
-    public ActionResult<List<User>> GetAll()
+    public ActionResult<List<UserResponse>> GetAll()
     {
         return Ok(_userService.GetEmployees(User.GetCuit()));
     }
 
-    // Cada usuario ve su propio perfil; el dueño, además, el de sus empleados
     [HttpGet("{cuit}")]
-    public ActionResult<User> GetByCuit(string cuit)
+    public ActionResult<UserResponse> GetByCuit(string cuit)
     {
         return Ok(_userService.GetByCuit(User.GetCuit(), cuit));
     }
@@ -38,9 +36,9 @@ public class UserController : ControllerBase
     // Crear un empleado exige estar logueado como dueño de su sucursal.
     [AllowAnonymous]
     [HttpPost]
-    public ActionResult<User> Create(UserCreateRequest request)
+    public ActionResult<UserResponse> Create(UserCreateRequest request)
     {
-        User created = _userService.Create(request, User.GetCuitOrNull());
+        UserResponse created = _userService.Create(User.GetCuitOrNull(), request);
         return CreatedAtAction(nameof(GetByCuit), new { cuit = created.Cuit }, created);
     }
 

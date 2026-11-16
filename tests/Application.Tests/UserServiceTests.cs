@@ -8,36 +8,36 @@ namespace Application.Tests
 {
     public class UserServiceTests
     {
-        private static UserCreateRequest Employee(Guid branchId) => new()
+        private const string EmployeeCuit = "20-33333333-3";
+
+        private static UserCreateRequest EmployeeRequest(TestScenario scenario) => new()
         {
-            Cuit = "20-33333333-3",
-            FirstName = "Lucia",
+            Cuit = EmployeeCuit,
+            FirstName = "Luis",
             LastName = "Diaz",
             Role = UserRole.Employee,
-            BranchId = branchId,
-            Password = "1234"
+            BranchId = scenario.Branch.Id,
+            Password = "secreta"
         };
 
         [Fact]
-        public void Create_DuenoSinSesion_LoRegistraConLaContrasenaHasheada()
+        public void Create_EmpleadoPorSuDuenio_GuardaSoloElHash()
         {
             TestScenario scenario = new();
-            UserCreateRequest request = new() { Cuit = "20-44444444-4", FirstName = "Pablo", LastName = "Ruiz", Role = UserRole.Owner, Password = "secreta" };
 
-            User created = scenario.UserService.Create(request, requesterCuit: null);
+            UserResponse created = scenario.UserService.Create(TestScenario.OwnerCuit, EmployeeRequest(scenario));
 
-            Assert.Equal("hash:secreta", created.PasswordHash);
-            Assert.Contains(created, scenario.Users.Users);
+            Assert.Equal(EmployeeCuit, created.Cuit);
+            Assert.Equal("hash:secreta", scenario.Users.GetByCuit(EmployeeCuit)!.PasswordHash);
         }
 
         [Fact]
-        public void Create_EmpleadoPorElDuenoDeLaSucursal_LoCrea()
+        public void Create_CuitExistente_LanzaConflicto()
         {
             TestScenario scenario = new();
+            scenario.UserService.Create(TestScenario.OwnerCuit, EmployeeRequest(scenario));
 
-            User created = scenario.UserService.Create(Employee(scenario.Branch.Id), TestScenario.OwnerCuit);
-
-            Assert.Equal(scenario.Branch.Id, created.BranchId);
+            Assert.Throws<ConflictException>(() => scenario.UserService.Create(TestScenario.OwnerCuit, EmployeeRequest(scenario)));
         }
 
         [Fact]
@@ -45,7 +45,7 @@ namespace Application.Tests
         {
             TestScenario scenario = new();
 
-            Assert.Throws<UnauthorizedException>(() => scenario.UserService.Create(Employee(scenario.Branch.Id), requesterCuit: null));
+            Assert.Throws<UnauthorizedException>(() => scenario.UserService.Create(null, EmployeeRequest(scenario)));
         }
 
         [Fact]
@@ -53,26 +53,30 @@ namespace Application.Tests
         {
             TestScenario scenario = new();
 
-            Assert.Throws<NotAllowedException>(() => scenario.UserService.Create(Employee(scenario.Branch.Id), TestScenario.OutsiderCuit));
+            Assert.Throws<NotAllowedException>(() => scenario.UserService.Create(TestScenario.OutsiderCuit, EmployeeRequest(scenario)));
         }
 
         [Fact]
-        public void Create_CuitRepetido_LanzaConflict()
+        public void Update_SinContrasenia_MantieneLaAnterior()
         {
             TestScenario scenario = new();
-            scenario.UserService.Create(Employee(scenario.Branch.Id), TestScenario.OwnerCuit);
+            scenario.UserService.Create(TestScenario.OwnerCuit, EmployeeRequest(scenario));
+            User employee = scenario.Users.GetByCuit(EmployeeCuit)!;
+            UserUpdateRequest request = new() { FirstName = "Luisa", LastName = "Diaz", BranchId = scenario.Branch.Id };
 
-            Assert.Throws<ConflictException>(() => scenario.UserService.Create(Employee(scenario.Branch.Id), TestScenario.OwnerCuit));
+            scenario.UserService.Update(TestScenario.OwnerCuit, EmployeeCuit, request);
+
+            Assert.Equal("Luisa", employee.FirstName);
+            Assert.Equal("hash:secreta", employee.PasswordHash);
         }
 
         [Fact]
-        public void Create_CuitConFormatoInvalido_LanzaValidacion()
+        public void GetByCuit_EmpleadoConsultaOtroUsuario_LanzaNotAllowed()
         {
             TestScenario scenario = new();
-            UserCreateRequest request = Employee(scenario.Branch.Id);
-            request.Cuit = "20333333333";
+            scenario.UserService.Create(TestScenario.OwnerCuit, EmployeeRequest(scenario));
 
-            Assert.Throws<AppValidationException>(() => scenario.UserService.Create(request, TestScenario.OwnerCuit));
+            Assert.Throws<NotAllowedException>(() => scenario.UserService.GetByCuit(EmployeeCuit, TestScenario.OwnerCuit));
         }
     }
 }

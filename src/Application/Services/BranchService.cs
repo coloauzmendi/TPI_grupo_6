@@ -1,19 +1,19 @@
 using Application.Interfaces;
+using Application.Models;
 using Domain.Entities;
-using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class BranchService
+    public class BranchService : IBranchService
     {
         private readonly IBranchRepository _branchRepository;
         private readonly IUserRepository _userRepository;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public BranchService(
             IBranchRepository branchRepository,
             IUserRepository userRepository,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _branchRepository = branchRepository;
             _userRepository = userRepository;
@@ -21,49 +21,59 @@ namespace Application.Services
         }
 
         // Dueño: las sucursales de sus empresas. Empleado: solo la suya.
-        public List<Branch> GetAll(string cuit)
+        public List<BranchResponse> GetAll(string cuit)
         {
-            return _accessService.GetBranches(cuit);
+            Dictionary<Guid, string> companyNames = CompanyNames(cuit);
+
+            return _accessService.GetBranches(cuit)
+                .Select(b => ResponseMapper.ToResponse(b, companyNames.GetValueOrDefault(b.CompanyId, string.Empty)))
+                .ToList();
         }
 
-        public Branch GetById(string cuit, Guid id)
+        public BranchResponse GetById(string cuit, Guid id)
         {
-            return _accessService.EnsureBranchAccess(cuit, id);
-        }
-
-        // La sucursal se crea en una empresa de la que el usuario es dueño
-        public Branch Create(string cuit, Branch newBranch)
-        {
-            Validate(newBranch);
-            _accessService.EnsureCompanyOwner(cuit, newBranch.CompanyId);
-
-            newBranch.Id = Guid.NewGuid();
-            newBranch.IsActive = true;
-
-            return _branchRepository.Create(newBranch);
-        }
-
-        // También permite moverla a otra empresa, siempre que el usuario sea dueño de ambas
-        public void Update(string cuit, Guid id, Branch updatedBranch)
-        {
-            Validate(updatedBranch);
             Branch branch = _accessService.EnsureBranchAccess(cuit, id);
-            _accessService.EnsureCompanyOwner(cuit, updatedBranch.CompanyId);
 
-            branch.Locality = updatedBranch.Locality.Trim();
-            branch.Address = updatedBranch.Address.Trim();
-            branch.Industry = updatedBranch.Industry;
-            branch.CompanyId = updatedBranch.CompanyId;
+            return ResponseMapper.ToResponse(branch, CompanyNames(cuit).GetValueOrDefault(branch.CompanyId, string.Empty));
+        }
 
+        public BranchResponse Create(string cuit, BranchRequest request)
+        {
+            Company company = _accessService.EnsureCompanyOwner(cuit, request.CompanyId);
+
+            Branch created = _branchRepository.Create(new Branch
+            {
+                Id = Guid.NewGuid(),
+                Locality = request.Locality,
+                Address = request.Address,
+                Industry = request.Industry,
+                CompanyId = request.CompanyId
+            });
+
+            return ResponseMapper.ToResponse(created, company.Name);
+        }
+
+        public void Update(string cuit, Guid id, BranchRequest request)
+        {
+            Branch branch = _accessService.EnsureBranchAccess(cuit, id);
+            _accessService.EnsureCompanyOwner(cuit, request.CompanyId);
+
+            branch.Locality = request.Locality;
+            branch.Address = request.Address;
+            branch.Industry = request.Industry;
+            branch.CompanyId = request.CompanyId;
             _branchRepository.Update(branch);
         }
 
-        // Baja lógica: también se dan de baja los empleados asignados a la sucursal
         public void Delete(string cuit, Guid id)
         {
-            Branch branch = _accessService.EnsureBranchAccess(cuit, id);
+            Deactivate(_accessService.EnsureBranchAccess(cuit, id));
+        }
 
-            foreach (User employee in _userRepository.GetByBranch(id))
+        // Baja lógica: también se dan de baja los empleados asignados a la sucursal
+        public void Deactivate(Branch branch)
+        {
+            foreach (User employee in _userRepository.GetByBranch(branch.Id))
             {
                 _userRepository.Delete(employee);
             }
@@ -71,12 +81,9 @@ namespace Application.Services
             _branchRepository.Delete(branch);
         }
 
-        private static void Validate(Branch branch)
+        private Dictionary<Guid, string> CompanyNames(string cuit)
         {
-            if (string.IsNullOrWhiteSpace(branch.Locality) || string.IsNullOrWhiteSpace(branch.Address))
-            {
-                throw new AppValidationException("La localidad y la dirección de la sucursal son obligatorias.");
-            }
+            return _accessService.GetCompanies(cuit).ToDictionary(c => c.Id, c => c.Name);
         }
     }
 }

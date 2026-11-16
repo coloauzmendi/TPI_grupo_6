@@ -1,8 +1,13 @@
 namespace Domain.Exceptions
 {
-    // El recurso ya existe o choca con el estado actual (409); ej.: un CUIT ya registrado
+    // El recurso ya existe o choca con otro (409)
     public class ConflictException : Exception
     {
+        public ConflictException()
+            : base()
+        {
+        }
+
         public ConflictException(string message)
             : base(message)
         {

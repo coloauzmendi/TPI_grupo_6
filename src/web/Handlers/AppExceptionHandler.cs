@@ -30,7 +30,7 @@ public class AppExceptionHandler : IExceptionHandler
             AppValidationException => (StatusCodes.Status400BadRequest, "Solicitud inválida"),
             UnauthorizedException => (StatusCodes.Status401Unauthorized, "No autorizado"),
             NotAllowedException => (StatusCodes.Status403Forbidden, "Acción no permitida"),
-            ConflictException => (StatusCodes.Status409Conflict, "Conflicto con el estado actual"),
+            ConflictException => (StatusCodes.Status409Conflict, "Conflicto"),
             ExternalServiceException => (StatusCodes.Status503ServiceUnavailable, "Servicio externo no disponible"),
             BadHttpRequestException badRequest => (badRequest.StatusCode, "Solicitud inválida"),
             _ => (StatusCodes.Status500InternalServerError, "Error interno del servidor")

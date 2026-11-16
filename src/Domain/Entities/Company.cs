@@ -1,18 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class Company
+    public class Company : ISoftDelete
     {
         public Guid Id { get; set; }
 
         public string Name { get; set; } = string.Empty;
 
         // Baja lógica
-        [JsonIgnore]
         public bool IsActive { get; set; } = true;
 
-        [JsonIgnore]
         public List<User> Owners { get; set; } = new();
     }
 }

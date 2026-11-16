@@ -1,46 +1,45 @@
 using Application.Interfaces;
-using Infraestructure.Data;
-using Microsoft.EntityFrameworkCore;
+using Domain.Interfaces;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    // Implementación genérica con EF Core: el DbSet se obtiene a partir del tipo T,
-    // así el mismo código sirve para cualquier entidad del ApplicationContext.
-    // Los métodos son virtual para que cada repositorio pueda cambiar el comportamiento
-    // (por ejemplo, filtrar los dados de baja o hacer baja lógica en lugar de borrar).
     public class Repository<T> : IRepository<T> where T : class
     {
         protected readonly ApplicationContext _context;
-        protected readonly DbSet<T> _dbSet;
 
         public Repository(ApplicationContext context)
         {
             _context = context;
-            _dbSet = context.Set<T>();
         }
 
-        public virtual List<T> GetAll()
+        public T Create(T entity)
         {
-            return _dbSet.ToList();
-        }
-
-        public virtual T Create(T entity)
-        {
-            _dbSet.Add(entity);
+            _context.Set<T>().Add(entity);
             _context.SaveChanges();
 
             return entity;
         }
 
-        public virtual void Update(T entity)
+        public void Update(T entity)
         {
-            _dbSet.Update(entity);
+            _context.Set<T>().Update(entity);
             _context.SaveChanges();
         }
 
-        public virtual void Delete(T entity)
+        // Baja lógica si la entidad la admite; si no, se elimina
+        public void Delete(T entity)
         {
-            _dbSet.Remove(entity);
+            if (entity is ISoftDelete softDeletable)
+            {
+                softDeletable.IsActive = false;
+                _context.Set<T>().Update(entity);
+            }
+            else
+            {
+                _context.Set<T>().Remove(entity);
+            }
+
             _context.SaveChanges();
         }
     }

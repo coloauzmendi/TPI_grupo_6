@@ -6,7 +6,7 @@ using Domain.Exceptions;
 namespace Application.Services
 {
     // Decide a qué empresas y sucursales puede acceder cada usuario (según su CUIT del token)
-    public class AccessService
+    public class AccessService : IAccessService
     {
         private readonly IUserRepository _userRepository;
         private readonly IBranchRepository _branchRepository;

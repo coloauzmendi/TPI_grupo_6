@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
@@ -18,6 +19,7 @@ namespace Application.Tests.Fakes
         public FakeSaleRepository Sales { get; } = new();
         public FakePurchaseRepository Purchases { get; } = new();
 
+        public Company Company { get; }
         public Branch Branch { get; }
         public Product Cola { get; }
         public Product Chips { get; }
@@ -28,30 +30,48 @@ namespace Application.Tests.Fakes
             User owner = Users.Create(new User { Cuit = OwnerCuit, FirstName = "Ana", LastName = "Perez", Role = UserRole.Owner });
             Users.Create(new User { Cuit = OutsiderCuit, FirstName = "Juan", LastName = "Gomez", Role = UserRole.Owner });
 
-            Company company = new Company { Id = Guid.NewGuid(), Name = "Kiosco Ana" };
-            company.Owners.Add(owner);
-            Companies.Create(company);
+            Company = new Company { Id = Guid.NewGuid(), Name = "Kiosco Ana" };
+            Company.Owners.Add(owner);
+            Companies.Create(Company);
 
-            Branch = Branches.Create(new Branch { Id = Guid.NewGuid(), CompanyId = company.Id, Locality = "Rosario", Industry = Industry.Kiosk });
+            Branch = Branches.Create(new Branch { Id = Guid.NewGuid(), CompanyId = Company.Id, Locality = "Rosario", Industry = Industry.Kiosk });
 
             Cola = AddProduct("Gaseosa", "Bebidas", Industry.Kiosk, 1000m, quantity: 10, minimum: 3);
             Chips = AddProduct("Papas fritas", "Snacks", Industry.Kiosk, 500m, quantity: 5, minimum: 2);
             Hammer = AddProduct("Martillo", "Herramientas", Industry.Hardware, 8000m, quantity: 2, minimum: 1);
         }
 
-        public AccessService Access => new AccessService(Users, Branches, Companies);
+        public IAccessService Access => new AccessService(Users, Branches, Companies);
 
-        public PriceService PriceService => new PriceService(Products, Stocks, Access);
-        public SaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
-        public PurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
-        public StockService StockService => new StockService(Stocks, Products, Access);
-        public ProductService ProductService => new ProductService(Products, Stocks, Access);
-        public BranchService BranchService => new BranchService(Branches, Users, Access);
-        public UserService UserService => new UserService(Users, Branches, new FakePasswordService(), Access);
+        public IPriceService PriceService => new PriceService(Products, Stocks, Access);
+        public ISaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
+        public IPurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
+        public IStockService StockService => new StockService(Stocks, Products, Access);
+        public IBranchService BranchService => new BranchService(Branches, Users, Access);
+        public ICompanyService CompanyService => new CompanyService(Companies, Users, Branches, BranchService, Access);
+        public IProductService ProductService => new ProductService(Products, Stocks, Access);
+        public IUserService UserService => new UserService(Users, Branches, new FakePasswordHashService(), Access);
 
         public BranchStock StockOf(Product product) => Stocks.GetById(Branch.Id, product.Id)!;
 
+        // Otra empresa del dueño OutsiderCuit, con una sucursal y un producto igual a Cola (mismo nombre y marca)
+        public Product AddOutsiderProduct()
+        {
+            Company company = new Company { Id = Guid.NewGuid(), Name = "Kiosco Juan" };
+            company.Owners.Add(Users.GetByCuit(OutsiderCuit)!);
+            Companies.Create(company);
+
+            Branch branch = Branches.Create(new Branch { Id = Guid.NewGuid(), CompanyId = company.Id, Locality = "Funes", Industry = Industry.Kiosk });
+
+            return AddProduct(branch, "Gaseosa", "Bebidas", Industry.Kiosk, 1000m, quantity: 7, minimum: 1);
+        }
+
         private Product AddProduct(string name, string category, Industry industry, decimal price, int quantity, int minimum)
+        {
+            return AddProduct(Branch, name, category, industry, price, quantity, minimum);
+        }
+
+        private Product AddProduct(Branch branch, string name, string category, Industry industry, decimal price, int quantity, int minimum)
         {
             Product product = Products.Create(new Product
             {
@@ -60,9 +80,10 @@ namespace Application.Tests.Fakes
                 Brand = "Generica",
                 Category = category,
                 Industry = industry,
-                Price = price
+                Price = price,
+                CompanyId = branch.CompanyId
             });
-            Stocks.Create(new BranchStock { BranchId = Branch.Id, ProductId = product.Id, Quantity = quantity, MinimumStock = minimum });
+            Stocks.Create(new BranchStock { BranchId = branch.Id, ProductId = product.Id, Quantity = quantity, MinimumStock = minimum });
             return product;
         }
     }

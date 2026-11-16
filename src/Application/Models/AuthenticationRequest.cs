@@ -5,10 +5,10 @@ namespace Application.Models
     // Credenciales que se envían por body al endpoint de autenticación
     public class AuthenticationRequest
     {
-        [Required]
+        [Required(ErrorMessage = "El CUIT es obligatorio.")]
         public string Cuit { get; set; } = string.Empty;
 
-        [Required]
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
         public string Password { get; set; } = string.Empty;
     }
 }

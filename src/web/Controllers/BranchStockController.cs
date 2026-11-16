@@ -1,6 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
-using Domain.Entities;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -12,44 +11,42 @@ namespace web.Controllers;
 [Route("api/branch/{branchId}/stock")]
 public class BranchStockController : ControllerBase
 {
-    private readonly StockService _stockService;
+    private readonly IStockService _stockService;
 
-    public BranchStockController(StockService stockService)
+    public BranchStockController(IStockService stockService)
     {
         _stockService = stockService;
     }
 
-    // Stock activo de la sucursal junto con los datos de cada producto
+    // Stock activo de la sucursal junto con los datos de cada producto; el dueño puede pedir también el dado de baja
     [HttpGet]
-    public ActionResult<List<StockItemResponse>> GetByBranch(Guid branchId)
+    public ActionResult<List<StockItemResponse>> GetByBranch(Guid branchId, [FromQuery] bool includeInactive = false)
     {
-        return Ok(_stockService.GetItems(User.GetCuit(), branchId));
+        return Ok(_stockService.GetItems(User.GetCuit(), branchId, includeInactive));
     }
 
     [HttpGet("{productId}")]
-    public ActionResult<BranchStock> GetById(Guid branchId, Guid productId)
+    public ActionResult<BranchStockResponse> GetById(Guid branchId, Guid productId)
     {
         return Ok(_stockService.GetById(User.GetCuit(), branchId, productId));
     }
 
-    // Da de alta un producto en la sucursal (si estaba dado de baja, se reactiva)
     [Authorize(Roles = "Owner")]
     [HttpPost]
-    public ActionResult<BranchStock> Create(Guid branchId, BranchStock newStock)
+    public ActionResult<BranchStockResponse> Create(Guid branchId, BranchStockCreateRequest request)
     {
-        BranchStock created = _stockService.Create(User.GetCuit(), branchId, newStock);
+        BranchStockResponse created = _stockService.Create(User.GetCuit(), branchId, request);
         return CreatedAtAction(nameof(GetById), new { branchId, productId = created.ProductId }, created);
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPut("{productId}")]
-    public IActionResult Update(Guid branchId, Guid productId, BranchStock updatedStock)
+    public IActionResult Update(Guid branchId, Guid productId, BranchStockUpdateRequest request)
     {
-        _stockService.Update(User.GetCuit(), branchId, productId, updatedStock);
+        _stockService.Update(User.GetCuit(), branchId, productId, request);
         return NoContent();
     }
 
-    // Baja lógica del producto en la sucursal
     [Authorize(Roles = "Owner")]
     [HttpDelete("{productId}")]
     public IActionResult Delete(Guid branchId, Guid productId)

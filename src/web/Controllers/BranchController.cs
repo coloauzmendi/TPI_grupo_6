@@ -1,5 +1,5 @@
-﻿using Application.Services;
-using Domain.Entities;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -11,39 +11,39 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class BranchController : ControllerBase
 {
-    private readonly BranchService _branchService;
+    private readonly IBranchService _branchService;
 
-    public BranchController(BranchService branchService)
+    public BranchController(IBranchService branchService)
     {
         _branchService = branchService;
     }
 
     // Dueño: las sucursales de sus empresas. Empleado: solo la suya.
     [HttpGet]
-    public ActionResult<List<Branch>> GetAll()
+    public ActionResult<List<BranchResponse>> GetAll()
     {
         return Ok(_branchService.GetAll(User.GetCuit()));
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Branch> GetById(Guid id)
+    public ActionResult<BranchResponse> GetById(Guid id)
     {
         return Ok(_branchService.GetById(User.GetCuit(), id));
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPost]
-    public ActionResult<Branch> Create(Branch newBranch)
+    public ActionResult<BranchResponse> Create(BranchRequest request)
     {
-        Branch created = _branchService.Create(User.GetCuit(), newBranch);
+        BranchResponse created = _branchService.Create(User.GetCuit(), request);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPut("{id}")]
-    public IActionResult Update(Guid id, Branch updatedBranch)
+    public IActionResult Update(Guid id, BranchRequest request)
     {
-        _branchService.Update(User.GetCuit(), id, updatedBranch);
+        _branchService.Update(User.GetCuit(), id, request);
         return NoContent();
     }
 

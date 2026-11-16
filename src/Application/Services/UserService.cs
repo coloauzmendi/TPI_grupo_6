@@ -7,37 +7,38 @@ using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class UserService
+    public class UserService : IUserService
     {
         private static readonly Regex CuitFormat = new(@"^\d{2}-\d{8}-\d$");
 
         private readonly IUserRepository _userRepository;
         private readonly IBranchRepository _branchRepository;
-        private readonly IPasswordService _passwordService;
-        private readonly AccessService _accessService;
+        private readonly IPasswordHashService _passwordHashService;
+        private readonly IAccessService _accessService;
 
         public UserService(
             IUserRepository userRepository,
             IBranchRepository branchRepository,
-            IPasswordService passwordService,
-            AccessService accessService)
+            IPasswordHashService passwordHashService,
+            IAccessService accessService)
         {
             _userRepository = userRepository;
             _branchRepository = branchRepository;
-            _passwordService = passwordService;
+            _passwordHashService = passwordHashService;
             _accessService = accessService;
         }
 
         // Empleados de las sucursales del dueño
-        public List<User> GetEmployees(string ownerCuit)
+        public List<UserResponse> GetEmployees(string ownerCuit)
         {
             return _accessService.GetBranches(ownerCuit)
                 .SelectMany(b => _userRepository.GetByBranch(b.Id))
+                .Select(ResponseMapper.ToResponse)
                 .ToList();
         }
 
         // Cada usuario ve su propio perfil; el dueño, además, el de sus empleados
-        public User GetByCuit(string requesterCuit, string cuit)
+        public UserResponse GetByCuit(string requesterCuit, string cuit)
         {
             User? user = _userRepository.GetByCuit(cuit);
             if (user is null || !user.IsActive)
@@ -47,8 +48,7 @@ namespace Application.Services
 
             if (cuit != requesterCuit)
             {
-                User requester = _accessService.GetUser(requesterCuit);
-                if (requester.Role != UserRole.Owner || user.BranchId is null)
+                if (_accessService.GetUser(requesterCuit).Role != UserRole.Owner || user.BranchId is null)
                 {
                     throw new NotAllowedException("No tenés acceso a ese usuario.");
                 }
@@ -56,26 +56,15 @@ namespace Application.Services
                 _accessService.EnsureBranchAccess(requesterCuit, user.BranchId.Value);
             }
 
-            return user;
+            return ResponseMapper.ToResponse(user);
         }
 
-        // Registrar un dueño es público (sin eso nadie podría crear el primer usuario).
-        // Crear un empleado exige estar logueado como dueño de su sucursal: requesterCuit es null si no hay sesión.
-        public User Create(UserCreateRequest request, string? requesterCuit)
+        // Sin usuario logueado solo se puede registrar un dueño; un empleado lo crea el dueño de su sucursal
+        public UserResponse Create(string? requesterCuit, UserCreateRequest request)
         {
             if (!CuitFormat.IsMatch(request.Cuit))
             {
                 throw new AppValidationException("El CUIT debe tener el formato 20-12345678-9.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
-            {
-                throw new AppValidationException("El nombre y el apellido son obligatorios.");
-            }
-
-            if (string.IsNullOrWhiteSpace(request.Password))
-            {
-                throw new AppValidationException("La contraseña es obligatoria.");
             }
 
             if (_userRepository.GetByCuit(request.Cuit) is not null)
@@ -86,8 +75,8 @@ namespace Application.Services
             User newUser = new User
             {
                 Cuit = request.Cuit,
-                FirstName = request.FirstName.Trim(),
-                LastName = request.LastName.Trim(),
+                FirstName = request.FirstName,
+                LastName = request.LastName,
                 Role = request.Role,
                 BranchId = request.BranchId
             };
@@ -110,20 +99,15 @@ namespace Application.Services
             }
 
             // Se guarda solo el hash, nunca la contraseña en texto plano
-            newUser.PasswordHash = _passwordService.Hash(newUser, request.Password);
+            newUser.PasswordHash = _passwordHashService.Hash(newUser, request.Password);
 
-            return _userRepository.Create(newUser);
+            return ResponseMapper.ToResponse(_userRepository.Create(newUser));
         }
 
-        // Edita un empleado de una sucursal del dueño; la contraseña solo se cambia si viene informada
+        // Edita un empleado de una sucursal del dueño; la contraseña solo se cambia si viene en el body
         public void Update(string ownerCuit, string cuit, UserUpdateRequest request)
         {
             User user = GetEmployeeOfOwner(ownerCuit, cuit);
-
-            if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
-            {
-                throw new AppValidationException("El nombre y el apellido son obligatorios.");
-            }
 
             if (request.BranchId is null)
             {
@@ -132,18 +116,20 @@ namespace Application.Services
 
             _accessService.EnsureBranchAccess(ownerCuit, request.BranchId.Value);
 
-            user.FirstName = request.FirstName.Trim();
-            user.LastName = request.LastName.Trim();
+            bool changesPassword = !string.IsNullOrWhiteSpace(request.Password);
+
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
             user.BranchId = request.BranchId;
-            if (!string.IsNullOrWhiteSpace(request.Password))
+            if (changesPassword)
             {
-                user.PasswordHash = _passwordService.Hash(user, request.Password);
+                user.PasswordHash = _passwordHashService.Hash(user, request.Password!);
             }
 
             _userRepository.Update(user);
         }
 
-        // Baja lógica: el empleado no puede volver a iniciar sesión
+        // Baja lógica
         public void Delete(string ownerCuit, string cuit)
         {
             _userRepository.Delete(GetEmployeeOfOwner(ownerCuit, cuit));

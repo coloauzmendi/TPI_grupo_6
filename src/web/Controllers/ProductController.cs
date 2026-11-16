@@ -1,6 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
-using Domain.Entities;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -12,45 +11,43 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class ProductController : ControllerBase
 {
-    private readonly ProductService _productService;
-    private readonly PriceService _priceService;
+    private readonly IProductService _productService;
+    private readonly IPriceService _priceService;
 
-    public ProductController(ProductService productService, PriceService priceService)
+    public ProductController(IProductService productService, IPriceService priceService)
     {
         _productService = productService;
         _priceService = priceService;
     }
 
     [HttpGet]
-    public ActionResult<List<Product>> GetAll()
+    public ActionResult<List<ProductResponse>> GetAll(Guid? companyId)
     {
-        return Ok(_productService.GetAll());
+        return Ok(_productService.GetAll(User.GetCuit(), companyId));
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Product> GetById(Guid id)
+    public ActionResult<ProductResponse> GetById(Guid id)
     {
-        return Ok(_productService.GetById(id));
+        return Ok(_productService.GetById(User.GetCuit(), id));
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPost]
-    public ActionResult<Product> Create(Product newProduct)
+    public ActionResult<ProductResponse> Create(ProductCreateRequest request)
     {
-        Product created = _productService.Create(newProduct);
+        ProductResponse created = _productService.Create(User.GetCuit(), request);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
-    // Solo productos cargados en alguna sucursal del dueño
     [Authorize(Roles = "Owner")]
     [HttpPut("{id}")]
-    public IActionResult Update(Guid id, Product updatedProduct)
+    public IActionResult Update(Guid id, ProductRequest request)
     {
-        _productService.Update(User.GetCuit(), id, updatedProduct);
+        _productService.Update(User.GetCuit(), id, request);
         return NoContent();
     }
 
-    // Solo si el producto no tiene ventas ni compras registradas
     [Authorize(Roles = "Owner")]
     [HttpDelete("{id}")]
     public IActionResult Delete(Guid id)

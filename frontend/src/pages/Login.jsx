@@ -25,7 +25,7 @@ export default function Login() {
     if (isRegister) {
       if (!CUIT_RE.test(form.cuit.trim())) return setError('El CUIT debe tener el formato 20-12345678-9.')
       if (!form.firstName.trim() || !form.lastName.trim()) return setError('Ingresá tu nombre y apellido.')
-      if (form.password.length < 4) return setError('La contraseña debe tener al menos 4 caracteres.')
+      if (form.password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.')
     }
 
     setBusy(true)

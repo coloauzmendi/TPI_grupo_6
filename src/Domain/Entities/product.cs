@@ -1,8 +1,9 @@
 using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class Product
+    public class Product : ISoftDelete
     {
         public Guid Id { get; set; }
 
@@ -15,5 +16,10 @@ namespace Domain.Entities
         public decimal Price { get; set; }
 
         public Industry Industry { get; set; }
+
+        public Guid CompanyId { get; set; }
+
+        // Baja lógica
+        public bool IsActive { get; set; } = true;
     }
 }

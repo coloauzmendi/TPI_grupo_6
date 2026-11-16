@@ -1,45 +1,31 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    // Create y Update se heredan de Repository<Company>
     public class CompanyRepository : Repository<Company>, ICompanyRepository
     {
         public CompanyRepository(ApplicationContext context) : base(context)
         {
         }
 
-        // Solo las empresas activas
-        public override List<Company> GetAll()
-        {
-            return _dbSet.Where(x => x.IsActive).ToList();
-        }
-
         public Company? GetById(Guid id)
         {
-            return _dbSet.FirstOrDefault(x => x.Id == id && x.IsActive);
+            return _context.Companies.FirstOrDefault(x => x.Id == id && x.IsActive);
         }
 
         public List<Company> GetByOwner(string ownerCuit)
         {
-            return _dbSet
+            return _context.Companies
                 .Where(c => c.IsActive && c.Owners.Any(o => o.Cuit == ownerCuit))
                 .ToList();
         }
 
-        // Baja lógica
-        public override void Delete(Company companyToDelete)
-        {
-            companyToDelete.IsActive = false;
-            Update(companyToDelete);
-        }
-
         public List<User> GetOwners(Guid companyId)
         {
-            return _dbSet
+            return _context.Companies
                 .Where(c => c.Id == companyId)
                 .SelectMany(c => c.Owners)
                 .Where(o => o.IsActive)
@@ -48,7 +34,7 @@ namespace Infraestructure.Repositories
 
         public void AddOwner(Guid companyId, User owner)
         {
-            var company = _dbSet
+            var company = _context.Companies
                 .Include(c => c.Owners)
                 .First(c => c.Id == companyId);
 
@@ -61,7 +47,7 @@ namespace Infraestructure.Repositories
 
         public void RemoveOwner(Guid companyId, string ownerCuit)
         {
-            var company = _dbSet
+            var company = _context.Companies
                 .Include(c => c.Owners)
                 .First(c => c.Id == companyId);
 

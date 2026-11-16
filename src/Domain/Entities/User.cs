@@ -1,9 +1,9 @@
-﻿using System.Text.Json.Serialization;
-using Domain.Enums;
+﻿using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class User
+    public class User : ISoftDelete
     {
         public string Cuit { get; set; } = string.Empty;
 
@@ -14,18 +14,15 @@ namespace Domain.Entities
         public UserRole Role { get; set; }
 
         // Hash de la contraseña; nunca se devuelve en las respuestas
-        [JsonIgnore]
         public string PasswordHash { get; set; } = string.Empty;
 
         // Solo para Employee: sucursal a la que está asignado (nula si es Owner)
         public Guid? BranchId { get; set; }
 
         // Baja lógica: un usuario inactivo no puede iniciar sesión ni aparece en los listados
-        [JsonIgnore]
         public bool IsActive { get; set; } = true;
 
         // Solo para Owner: empresas de las que es dueño (N:M)
-        [JsonIgnore]
         public List<Company> Companies { get; set; } = new();
     }
 }

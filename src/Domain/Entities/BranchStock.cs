@@ -1,8 +1,8 @@
-﻿using System.Text.Json.Serialization;
+﻿using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class BranchStock
+    public class BranchStock : ISoftDelete
     {
         public Guid BranchId { get; set; }
 
@@ -13,7 +13,6 @@ namespace Domain.Entities
         public int MinimumStock { get; set; }
 
         // Baja lógica: el producto deja de estar activo en la sucursal
-        [JsonIgnore]
         public bool IsActive { get; set; } = true;
     }
 }

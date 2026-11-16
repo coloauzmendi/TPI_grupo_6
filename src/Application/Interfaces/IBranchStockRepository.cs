@@ -2,12 +2,11 @@ using Domain.Entities;
 
 namespace Application.Interfaces
 {
-    // GetAll, Create, Update y Delete vienen de IRepository<BranchStock>
     public interface IBranchStockRepository : IRepository<BranchStock>
     {
         List<BranchStock> GetByBranch(Guid branchId);
-
-        // Clave compuesta: sucursal + producto
+        List<BranchStock> GetByBranchIncludingInactive(Guid branchId);
+        List<BranchStock> GetByProduct(Guid productId);
         BranchStock? GetById(Guid branchId, Guid productId);
     }
 }

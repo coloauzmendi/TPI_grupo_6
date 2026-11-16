@@ -1,8 +1,7 @@
-using Domain.Entities;
+﻿using Domain.Entities;
 
 namespace Application.Interfaces
 {
-    // GetAll, Create, Update y Delete vienen de IRepository<Company>
     public interface ICompanyRepository : IRepository<Company>
     {
         Company? GetById(Guid id);
