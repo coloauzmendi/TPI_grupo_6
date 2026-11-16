@@ -1,5 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -11,10 +11,10 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class CompanyController : ControllerBase
 {
-    private readonly CompanyService _companyService;
-    private readonly AccessService _accessService;
+    private readonly ICompanyService _companyService;
+    private readonly IAccessService _accessService;
 
-    public CompanyController(CompanyService companyService, AccessService accessService)
+    public CompanyController(ICompanyService companyService, IAccessService accessService)
     {
         _companyService = companyService;
         _accessService = accessService;

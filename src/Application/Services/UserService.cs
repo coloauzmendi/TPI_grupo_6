@@ -7,20 +7,20 @@ using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class UserService
+    public class UserService : IUserService
     {
         private static readonly Regex CuitFormat = new(@"^\d{2}-\d{8}-\d$");
 
         private readonly IUserRepository _userRepository;
         private readonly IBranchRepository _branchRepository;
         private readonly IPasswordHashService _passwordHashService;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public UserService(
             IUserRepository userRepository,
             IBranchRepository branchRepository,
             IPasswordHashService passwordHashService,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _userRepository = userRepository;
             _branchRepository = branchRepository;

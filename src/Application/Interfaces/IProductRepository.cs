@@ -2,15 +2,13 @@
 
 namespace Application.Interfaces
 {
-    public interface IProductRepository
+    public interface IProductRepository : IRepository<Product>
     {
         List<Product> GetAll();
         List<Product> GetAllIncludingInactive();
         List<Product> GetByCompanies(List<Guid> companyIds);
         List<Product> GetByCompanyIncludingInactive(Guid companyId);
         Product? GetById(Guid id);
-        Product Create(Product newProduct);
-        void Update(Product updatedProduct);
         void UpdateRange(List<Product> updatedProducts);
         void Delete(Product productToDelete, List<BranchStock> stocksToDelete);
     }

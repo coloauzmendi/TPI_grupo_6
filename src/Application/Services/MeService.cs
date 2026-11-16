@@ -6,9 +6,9 @@ using Domain.Enums;
 namespace Application.Services
 {
     // Datos del usuario logueado: arma las respuestas "me" a partir de su CUIT
-    public class MeService
+    public class MeService : IMeService
     {
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
         private readonly IUserRepository _userRepository;
         private readonly ICompanyRepository _companyRepository;
         private readonly IBranchStockRepository _stockRepository;
@@ -16,7 +16,7 @@ namespace Application.Services
         private readonly ISaleRepository _saleRepository;
 
         public MeService(
-            AccessService accessService,
+            IAccessService accessService,
             IUserRepository userRepository,
             ICompanyRepository companyRepository,
             IBranchStockRepository stockRepository,

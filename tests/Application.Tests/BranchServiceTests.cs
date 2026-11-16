@@ -15,8 +15,8 @@ namespace Application.Tests
 
             scenario.BranchService.Delete(TestScenario.OwnerCuit, scenario.Branch.Id);
 
-            Assert.Empty(scenario.Branches.GetAll());
-            Assert.Null(scenario.Users.GetByCuit("20-33333333-3"));
+            Assert.False(scenario.Branch.IsActive);
+            Assert.False(scenario.Users.GetByCuit("20-33333333-3")!.IsActive);
         }
 
         [Fact]
@@ -25,7 +25,7 @@ namespace Application.Tests
             TestScenario scenario = new();
 
             Assert.Throws<NotAllowedException>(() => scenario.BranchService.Delete(TestScenario.OutsiderCuit, scenario.Branch.Id));
-            Assert.Single(scenario.Branches.GetAll());
+            Assert.True(scenario.Branch.IsActive);
         }
 
         [Fact]
@@ -36,9 +36,9 @@ namespace Application.Tests
 
             scenario.CompanyService.Delete(scenario.Company.Id);
 
-            Assert.Empty(scenario.Companies.GetAll());
-            Assert.Empty(scenario.Branches.GetAll());
-            Assert.Null(scenario.Users.GetByCuit("20-33333333-3"));
+            Assert.False(scenario.Company.IsActive);
+            Assert.False(scenario.Branch.IsActive);
+            Assert.False(scenario.Users.GetByCuit("20-33333333-3")!.IsActive);
         }
     }
 }

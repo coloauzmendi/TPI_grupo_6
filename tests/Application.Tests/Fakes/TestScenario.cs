@@ -1,3 +1,4 @@
+using Application.Interfaces;
 using Application.Services;
 using Domain.Entities;
 using Domain.Enums;
@@ -40,16 +41,16 @@ namespace Application.Tests.Fakes
             Hammer = AddProduct("Martillo", "Herramientas", Industry.Hardware, 8000m, quantity: 2, minimum: 1);
         }
 
-        public AccessService Access => new AccessService(Users, Branches, Companies);
+        public IAccessService Access => new AccessService(Users, Branches, Companies);
 
-        public PriceService PriceService => new PriceService(Products, Stocks, Access);
-        public SaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
-        public PurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
-        public StockService StockService => new StockService(Stocks, Products, Access);
-        public BranchService BranchService => new BranchService(Branches, Users, Access);
-        public CompanyService CompanyService => new CompanyService(Companies, Users, Branches, BranchService, Access);
-        public ProductService ProductService => new ProductService(Products, Stocks, Access);
-        public UserService UserService => new UserService(Users, Branches, new FakePasswordHashService(), Access);
+        public IPriceService PriceService => new PriceService(Products, Stocks, Access);
+        public ISaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
+        public IPurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
+        public IStockService StockService => new StockService(Stocks, Products, Access);
+        public IBranchService BranchService => new BranchService(Branches, Users, Access);
+        public ICompanyService CompanyService => new CompanyService(Companies, Users, Branches, BranchService, Access);
+        public IProductService ProductService => new ProductService(Products, Stocks, Access);
+        public IUserService UserService => new UserService(Users, Branches, new FakePasswordHashService(), Access);
 
         public BranchStock StockOf(Product product) => Stocks.GetById(Branch.Id, product.Id)!;
 

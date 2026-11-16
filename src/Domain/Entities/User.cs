@@ -1,8 +1,9 @@
 ﻿using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class User
+    public class User : ISoftDelete
     {
         public string Cuit { get; set; } = string.Empty;
 

@@ -1,8 +1,8 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
     public class PurchaseRepository : IPurchaseRepository
     {

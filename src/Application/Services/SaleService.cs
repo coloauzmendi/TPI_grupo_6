@@ -5,18 +5,18 @@ using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class SaleService
+    public class SaleService : ISaleService
     {
         private readonly ISaleRepository _saleRepository;
         private readonly IBranchStockRepository _stockRepository;
         private readonly IProductRepository _productRepository;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public SaleService(
             ISaleRepository saleRepository,
             IBranchStockRepository stockRepository,
             IProductRepository productRepository,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _saleRepository = saleRepository;
             _stockRepository = stockRepository;

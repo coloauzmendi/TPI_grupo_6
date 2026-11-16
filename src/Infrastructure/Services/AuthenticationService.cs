@@ -8,7 +8,7 @@ using Domain.Exceptions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Infraestructure.Services
+namespace Infrastructure.Services
 {
     public class AuthenticationService : ICustomAuthenticationService
     {
@@ -75,15 +75,6 @@ namespace Infraestructure.Services
                 credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
-        }
-
-        public class AuthenticationServiceOptions
-        {
-            public const string AuthenticationService = "AuthenticationService";
-
-            public string Issuer { get; set; } = string.Empty;
-            public string Audience { get; set; } = string.Empty;
-            public string SecretForKey { get; set; } = string.Empty;
         }
     }
 }

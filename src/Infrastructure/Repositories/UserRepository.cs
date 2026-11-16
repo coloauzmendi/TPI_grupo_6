@@ -1,21 +1,13 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository : Repository<User>, IUserRepository
     {
-        private readonly ApplicationContext _context;
-
-        public UserRepository(ApplicationContext context)
+        public UserRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
-        }
-
-        public List<User> GetAll()
-        {
-            return _context.Users.Where(x => x.IsActive).ToList();
         }
 
         // Devuelve también los usuarios dados de baja: el CUIT sigue ocupado
@@ -27,28 +19,6 @@ namespace Infraestructure.Repositories
         public List<User> GetByBranch(Guid branchId)
         {
             return _context.Users.Where(x => x.BranchId == branchId && x.IsActive).ToList();
-        }
-
-        public User Create(User newUser)
-        {
-            _context.Users.Add(newUser);
-            _context.SaveChanges();
-
-            return newUser;
-        }
-
-        public void Update(User updatedUser)
-        {
-            _context.Users.Update(updatedUser);
-            _context.SaveChanges();
-        }
-
-        // Baja lógica
-        public void Delete(User userToDelete)
-        {
-            userToDelete.IsActive = false;
-            _context.Users.Update(userToDelete);
-            _context.SaveChanges();
         }
     }
 }

@@ -6,31 +6,26 @@ using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class CompanyService
+    public class CompanyService : ICompanyService
     {
         private readonly ICompanyRepository _companyRepository;
         private readonly IUserRepository _userRepository;
         private readonly IBranchRepository _branchRepository;
-        private readonly BranchService _branchService;
-        private readonly AccessService _accessService;
+        private readonly IBranchService _branchService;
+        private readonly IAccessService _accessService;
 
         public CompanyService(
             ICompanyRepository companyRepository,
             IUserRepository userRepository,
             IBranchRepository branchRepository,
-            BranchService branchService,
-            AccessService accessService)
+            IBranchService branchService,
+            IAccessService accessService)
         {
             _companyRepository = companyRepository;
             _userRepository = userRepository;
             _branchRepository = branchRepository;
             _branchService = branchService;
             _accessService = accessService;
-        }
-
-        public List<Company> GetAll()
-        {
-            return _companyRepository.GetAll();
         }
 
         // Solo las empresas de las que el usuario es dueño

@@ -1,8 +1,9 @@
 ﻿using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class Branch
+    public class Branch : ISoftDelete
     {
         public Guid Id { get; set; }
 

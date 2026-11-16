@@ -1,5 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -11,9 +11,9 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class BranchController : ControllerBase
 {
-    private readonly BranchService _branchService;
+    private readonly IBranchService _branchService;
 
-    public BranchController(BranchService branchService)
+    public BranchController(IBranchService branchService)
     {
         _branchService = branchService;
     }

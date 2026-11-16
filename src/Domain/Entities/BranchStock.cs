@@ -1,6 +1,8 @@
-﻿namespace Domain.Entities
+﻿using Domain.Interfaces;
+
+namespace Domain.Entities
 {
-    public class BranchStock
+    public class BranchStock : ISoftDelete
     {
         public Guid BranchId { get; set; }
 

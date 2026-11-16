@@ -2,7 +2,7 @@ using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
-namespace Infraestructure.Services
+namespace Infrastructure.Services
 {
     // Hash de contraseñas con el algoritmo de ASP.NET Core Identity
     public class PasswordHashService : IPasswordHashService

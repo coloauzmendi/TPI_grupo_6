@@ -9,12 +9,12 @@ namespace Application.Services
     {
         private readonly IProductRepository _productRepository;
         private readonly IBranchStockRepository _stockRepository;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public ProductService(
             IProductRepository productRepository,
             IBranchStockRepository stockRepository,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _productRepository = productRepository;
             _stockRepository = stockRepository;

@@ -1,16 +1,13 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    public class ProductRepository : IProductRepository
+    public class ProductRepository : Repository<Product>, IProductRepository
     {
-        private readonly ApplicationContext _context;
-
-        public ProductRepository(ApplicationContext context)
+        public ProductRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
         public List<Product> GetAll()
@@ -38,20 +35,6 @@ namespace Infraestructure.Repositories
         public Product? GetById(Guid id)
         {
             return _context.Products.FirstOrDefault(x => x.Id == id && x.IsActive);
-        }
-
-        public Product Create(Product newProduct)
-        {
-            _context.Products.Add(newProduct);
-            _context.SaveChanges();
-
-            return newProduct;
-        }
-
-        public void Update(Product updatedProduct)
-        {
-            _context.Products.Update(updatedProduct);
-            _context.SaveChanges();
         }
 
         // Actualiza varios productos en una sola transacción (actualización masiva de precios)

@@ -1,6 +1,5 @@
 ﻿using Application.Interfaces;
 using Application.Models;
-using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -13,9 +12,9 @@ namespace web.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
-    private readonly PriceService _priceService;
+    private readonly IPriceService _priceService;
 
-    public ProductController(IProductService productService, PriceService priceService)
+    public ProductController(IProductService productService, IPriceService priceService)
     {
         _productService = productService;
         _priceService = priceService;

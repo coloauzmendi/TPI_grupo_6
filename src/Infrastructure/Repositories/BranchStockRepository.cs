@@ -1,16 +1,13 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    public class BranchStockRepository : IBranchStockRepository
+    public class BranchStockRepository : Repository<BranchStock>, IBranchStockRepository
     {
-        private readonly ApplicationContext _context;
-
-        public BranchStockRepository(ApplicationContext context)
+        public BranchStockRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
         public List<BranchStock> GetByBranch(Guid branchId)
@@ -33,28 +30,6 @@ namespace Infraestructure.Repositories
         public BranchStock? GetById(Guid branchId, Guid productId)
         {
             return _context.BranchStocks.FirstOrDefault(x => x.BranchId == branchId && x.ProductId == productId);
-        }
-
-        public BranchStock Create(BranchStock newStock)
-        {
-            _context.BranchStocks.Add(newStock);
-            _context.SaveChanges();
-
-            return newStock;
-        }
-
-        public void Update(BranchStock updatedStock)
-        {
-            _context.BranchStocks.Update(updatedStock);
-            _context.SaveChanges();
-        }
-
-        // Baja lógica
-        public void Delete(BranchStock stockToDelete)
-        {
-            stockToDelete.IsActive = false;
-            _context.BranchStocks.Update(stockToDelete);
-            _context.SaveChanges();
         }
     }
 }

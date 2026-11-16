@@ -6,19 +6,19 @@ using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class PriceService
+    public class PriceService : IPriceService
     {
         private const decimal MinPercent = -99m;
         private const decimal MaxPercent = 1000m;
 
         private readonly IProductRepository _productRepository;
         private readonly IBranchStockRepository _stockRepository;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public PriceService(
             IProductRepository productRepository,
             IBranchStockRepository stockRepository,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _productRepository = productRepository;
             _stockRepository = stockRepository;

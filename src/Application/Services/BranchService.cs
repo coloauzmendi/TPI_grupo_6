@@ -4,16 +4,16 @@ using Domain.Entities;
 
 namespace Application.Services
 {
-    public class BranchService
+    public class BranchService : IBranchService
     {
         private readonly IBranchRepository _branchRepository;
         private readonly IUserRepository _userRepository;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public BranchService(
             IBranchRepository branchRepository,
             IUserRepository userRepository,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _branchRepository = branchRepository;
             _userRepository = userRepository;

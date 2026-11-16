@@ -6,19 +6,19 @@ using Domain.Exceptions;
 
 namespace Application.Services
 {
-    public class StockService
+    public class StockService : IStockService
     {
         // Tope del stock de un producto en una sucursal
         public const int MaxStock = 1_000_000;
 
         private readonly IBranchStockRepository _stockRepository;
         private readonly IProductRepository _productRepository;
-        private readonly AccessService _accessService;
+        private readonly IAccessService _accessService;
 
         public StockService(
             IBranchStockRepository stockRepository,
             IProductRepository productRepository,
-            AccessService accessService)
+            IAccessService accessService)
         {
             _stockRepository = stockRepository;
             _productRepository = productRepository;

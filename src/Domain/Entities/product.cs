@@ -1,8 +1,9 @@
 using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class Product
+    public class Product : ISoftDelete
     {
         public Guid Id { get; set; }
 

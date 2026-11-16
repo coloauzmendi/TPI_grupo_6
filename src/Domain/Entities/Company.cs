@@ -1,6 +1,8 @@
-﻿namespace Domain.Entities
+﻿using Domain.Interfaces;
+
+namespace Domain.Entities
 {
-    public class Company
+    public class Company : ISoftDelete
     {
         public Guid Id { get; set; }
 

@@ -1,5 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -11,9 +11,9 @@ namespace web.Controllers;
 [Route("api/branch/{branchId}/stock")]
 public class BranchStockController : ControllerBase
 {
-    private readonly StockService _stockService;
+    private readonly IStockService _stockService;
 
-    public BranchStockController(StockService stockService)
+    public BranchStockController(IStockService stockService)
     {
         _stockService = stockService;
     }
