@@ -1,9 +1,9 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
     public class SaleRepository : ISaleRepository
     {
@@ -16,20 +16,35 @@ namespace Infraestructure.Repositories
 
         public Sale Create(Sale newSale, List<BranchStock> updatedStocks)
         {
-            newSale.Number = (_context.Sales.Max(s => (int?)s.Number) ?? 0) + 1;
-
             _context.Sales.Add(newSale);
             _context.BranchStocks.UpdateRange(updatedStocks);
-            _context.SaveChanges(); // una sola transacción: venta + stock
+
+            // una sola transacción: venta + stock
+            NumberConflictRetry.SaveChanges(_context, nameof(ApplicationContext.Sales),
+                () => newSale.Number = (_context.Sales.Max(s => (int?)s.Number) ?? 0) + 1);
 
             return newSale;
+        }
+
+        public Sale? GetById(Guid branchId, Guid saleId)
+        {
+            return _context.Sales
+                .Include(s => s.Details)
+                .FirstOrDefault(s => s.Id == saleId && s.BranchId == branchId);
+        }
+
+        public void Cancel(Sale sale, List<BranchStock> restoredStocks)
+        {
+            _context.Sales.Update(sale);
+            _context.BranchStocks.UpdateRange(restoredStocks);
+            _context.SaveChanges(); // una sola transacción: anulación + stock
         }
 
         public List<Sale> GetByBranches(List<Guid> branchIds, DateTime from, DateTime to)
         {
             return _context.Sales
                 .Include(s => s.Details)
-                .Where(s => branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to)
+                .Where(s => !s.IsCancelled && branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to)
                 .OrderBy(s => s.Date)
                 .ToList();
         }
@@ -38,7 +53,7 @@ namespace Infraestructure.Repositories
         {
             return _context.Sales
                 .Include(s => s.Details)
-                .Where(s => s.UserCuit == userCuit && s.Date >= from && s.Date < to)
+                .Where(s => !s.IsCancelled && s.UserCuit == userCuit && s.Date >= from && s.Date < to)
                 .OrderBy(s => s.Date)
                 .ToList();
         }

@@ -26,19 +26,19 @@ export default function Purchases() {
   const load = useCallback(() => {
     if (!active) return
     api.stock(active.id).then(setItems).catch((e) => toast(e.message, 'err'))
-    api.products().then(setProducts).catch(() => {})
+    api.products(active.companyId).then(setProducts).catch(() => {})
   }, [active, toast])
   useEffect(load, [load])
 
   // Si se llega desde una alerta de stock bajo, el producto ya viene cargado en la compra
   const fromAlert = location.state?.productId
   useEffect(() => {
-    setLines(fromAlert ? [{ productId: fromAlert, quantity: '', cost: '' }] : [])
+    setLines(fromAlert ? [{ productId: fromAlert, quantity: '', costType: 'unit', cost: '' }] : [])
   }, [active?.id, fromAlert])
 
   const inStock = Object.fromEntries(items.map((i) => [i.productId, i]))
   const term = q.toLowerCase().trim()
-  // Productos de la sucursal + productos del mismo rubro que todavía no tienen alta en ella
+  // Productos de la sucursal + productos de la empresa del mismo rubro que todavía no tienen alta en ella
   const catalog = [
     ...items,
     ...products
@@ -60,11 +60,12 @@ export default function Purchases() {
       const cost = parseDecimal(l.cost)
       let error = null
       if (l.quantity !== '' && (!Number.isInteger(n) || n <= 0)) error = 'La cantidad debe ser un entero mayor a 0'
-      else if (l.cost !== '' && (isNaN(cost) || cost < 0)) error = 'El costo debe ser un número ≥ 0'
+      else if (l.cost !== '' && (isNaN(cost) || cost <= 0)) error = 'El importe debe ser un número mayor a 0'
       const complete = l.quantity !== '' && l.cost !== '' && !error
+      const subtotal = l.costType === 'total' ? cost : n * cost
       if (!complete) incomplete = true
-      else total += n * cost
-      return { l, item: inStock[l.productId], n, cost, error, complete }
+      else total += subtotal
+      return { l, item: inStock[l.productId], n, cost, subtotal, error, complete }
     })
 
   const cancel = () => {
@@ -77,7 +78,7 @@ export default function Purchases() {
     try {
       const purchase = await api.createPurchase(active.id, {
         supplier: supplier.trim() || null,
-        items: rows.map((r) => ({ productId: r.l.productId, quantity: r.n, unitCost: r.cost })),
+        items: rows.map((r) => ({ productId: r.l.productId, quantity: r.n, ...(r.l.costType === 'total' ? { totalCost: r.cost } : { unitCost: r.cost }) })),
       })
       setLines([])
       setSupplier('')
@@ -118,7 +119,7 @@ export default function Purchases() {
               <button
                 key={p.productId}
                 disabled={p.notRegistered}
-                onClick={() => !added && setLines([...lines, { productId: p.productId, quantity: '', cost: '' }])}
+                onClick={() => !added && setLines([...lines, { productId: p.productId, quantity: '', costType: 'unit', cost: '' }])}
                 style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', background: '#fff', border: '1px solid #e6e9ef', borderRadius: 12, cursor: p.notRegistered ? 'not-allowed' : 'pointer', opacity: p.notRegistered ? 0.55 : 1, textAlign: 'left' }}
               >
                 <span style={{ flex: 1, minWidth: 0 }}>
@@ -147,7 +148,7 @@ export default function Purchases() {
         </label>
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 10, background: '#f6f7fa', borderRadius: 12, padding: 10, minHeight: 200 }}>
           {rows.length === 0 && <div style={{ margin: 'auto', textAlign: 'center', color: '#8a93a6', fontSize: 15, padding: 24 }}>Agregá productos desde la lista</div>}
-          {rows.map(({ l, item, n, cost, error, complete }) => (
+          {rows.map(({ l, item, subtotal, error, complete }) => (
             <div key={l.productId} style={{ background: '#fff', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <div>
@@ -158,16 +159,23 @@ export default function Purchases() {
                   <Icon name="delete" style={{ fontSize: 22 }} />
                 </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,0.8fr) minmax(0,1fr) minmax(0,1fr) auto', gap: 8, alignItems: 'end' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#667085' }}>
                   Cantidad
                   <input value={l.quantity} onChange={(e) => setLine(l.productId, 'quantity', e.target.value)} inputMode="numeric" placeholder="0" style={{ height: 38, padding: '0 10px', border: '1px solid #d5dae3', borderRadius: 8, fontSize: 15 }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#667085' }}>
-                  Costo unitario ($)
+                  Tipo de costo
+                  <select value={l.costType} onChange={(e) => setLine(l.productId, 'costType', e.target.value)} style={{ height: 38, padding: '0 6px', border: '1px solid #d5dae3', borderRadius: 8, fontSize: 14, background: '#fff' }}>
+                    <option value="unit">Costo por unidad</option>
+                    <option value="total">Costo total</option>
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#667085' }}>
+                  {l.costType === 'total' ? 'Costo total ($)' : 'Costo unitario ($)'}
                   <input value={l.cost} onChange={(e) => setLine(l.productId, 'cost', e.target.value)} inputMode="decimal" placeholder="0,00" style={{ height: 38, padding: '0 10px', border: '1px solid #d5dae3', borderRadius: 8, fontSize: 15 }} />
                 </label>
-                <strong style={{ width: 90, textAlign: 'right' }}>{complete ? money(n * cost) : '—'}</strong>
+                <strong style={{ width: 90, textAlign: 'right' }}>{complete ? money(subtotal) : '—'}</strong>
               </div>
               {error && <div style={{ fontSize: 13, color: '#b42323', background: '#fdecec', padding: '6px 10px', borderRadius: 7 }}>{error}</div>}
             </div>

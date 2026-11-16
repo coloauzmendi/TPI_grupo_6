@@ -1,5 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -11,9 +11,9 @@ namespace web.Controllers;
 [Route("api/reports")]
 public class ReportController : ControllerBase
 {
-    private readonly ReportService _reportService;
+    private readonly IReportService _reportService;
 
-    public ReportController(ReportService reportService)
+    public ReportController(IReportService reportService)
     {
         _reportService = reportService;
     }

@@ -82,6 +82,17 @@ export default function MonthlyClose() {
             })}
           </div>
 
+          <div style={{ background: '#e3f4f2', borderRadius: 14, padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 14, color: '#5b6579' }}>Ganancia estimada</div>
+              <div style={{ fontSize: 30, fontWeight: 800, color: data.estimatedProfit < 0 ? '#b42323' : C.teal, letterSpacing: '-0.02em' }}>{money(data.estimatedProfit)}</div>
+            </div>
+            <div style={{ fontSize: 13, color: '#5b6579', maxWidth: 460, lineHeight: 1.5 }}>
+              Ventas del mes menos el costo de la última compra registrada de cada producto. No incluye productos sin compras registradas
+              {data.productsWithoutCost > 0 && <strong> ({num(data.productsWithoutCost)} {data.productsWithoutCost === 1 ? 'producto vendido' : 'productos vendidos'} este mes)</strong>}.
+            </div>
+          </div>
+
           {real && (() => {
             const vsPrevReal = compare(data.current.total, real.realPrevious, money)
             const vsYearReal = compare(data.current.total, real.realLastYear, money)

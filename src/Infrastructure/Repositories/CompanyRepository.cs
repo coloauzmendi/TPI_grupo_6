@@ -1,22 +1,14 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    public class CompanyRepository : ICompanyRepository
+    public class CompanyRepository : Repository<Company>, ICompanyRepository
     {
-        private readonly ApplicationContext _context;
-
-        public CompanyRepository(ApplicationContext context)
+        public CompanyRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
-        }
-
-        public List<Company> GetAll()
-        {
-            return _context.Companies.Where(x => x.IsActive).ToList();
         }
 
         public Company? GetById(Guid id)
@@ -29,27 +21,6 @@ namespace Infraestructure.Repositories
             return _context.Companies
                 .Where(c => c.IsActive && c.Owners.Any(o => o.Cuit == ownerCuit))
                 .ToList();
-        }
-
-        public Company Create(Company newCompany)
-        {
-            _context.Companies.Add(newCompany);
-            _context.SaveChanges();
-
-            return newCompany;
-        }
-
-        public void Update(Company updatedCompany)
-        {
-            _context.Companies.Update(updatedCompany);
-            _context.SaveChanges();
-        }
-
-        public void Delete(Company companyToDelete)
-        {
-            companyToDelete.IsActive = false; // baja lógica
-            _context.Companies.Update(companyToDelete);
-            _context.SaveChanges();
         }
 
         public List<User> GetOwners(Guid companyId)

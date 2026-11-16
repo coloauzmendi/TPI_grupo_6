@@ -1,5 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -12,9 +12,9 @@ namespace web.Controllers;
 [Route("api/me")]
 public class MeController : ControllerBase
 {
-    private readonly MeService _meService;
+    private readonly IMeService _meService;
 
-    public MeController(MeService meService)
+    public MeController(IMeService meService)
     {
         _meService = meService;
     }

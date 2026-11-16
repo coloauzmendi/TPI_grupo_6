@@ -1,0 +1,160 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '22'
+  SOLUTION: MiWebApp.slnx
+
+jobs:
+  api:
+    name: API - build y test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION }} --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION }} --configuration Release --no-build --verbosity normal
+
+      - name: Build de la imagen Docker
+        run: docker build --tag tpi-api:ci .
+
+  frontend:
+    name: Frontend - lint y build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          VITE_API_URL: http://localhost:5015
+        run: npm run build
+
+  deploy-api:
+    name: Deploy de la API
+    needs: [api, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login a GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadatos de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/api
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+
+      - name: Build y push de la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ github.sha }}
+
+      - name: Solicitar el despliegue al hosting
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: bash scripts/trigger-deploy.sh
+
+      - name: Smoke test de la API
+        env:
+          API_URL: ${{ vars.API_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          SMOKE_CUIT: ${{ vars.SMOKE_CUIT }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash scripts/smoke-test-api.sh
+
+  deploy-frontend:
+    name: Deploy del frontend (Vercel)
+    needs: deploy-api
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Descargar configuración de Vercel
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Desplegar en Vercel
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Smoke test del frontend
+        env:
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: bash scripts/smoke-test-frontend.sh

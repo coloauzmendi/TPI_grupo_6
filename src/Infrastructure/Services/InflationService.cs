@@ -5,7 +5,7 @@ using Application.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
-namespace Infraestructure.Services
+namespace Infrastructure.Services
 {
     // Consume la API de Series de Tiempo de datos.gob.ar (IPC nacional, INDEC); no requiere cuenta ni clave
     public class InflationService : IInflationService

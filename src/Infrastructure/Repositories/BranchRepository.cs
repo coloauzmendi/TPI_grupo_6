@@ -1,21 +1,13 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    public class BranchRepository : IBranchRepository
+    public class BranchRepository : Repository<Branch>, IBranchRepository
     {
-        private readonly ApplicationContext _context;
-
-        public BranchRepository(ApplicationContext context)
+        public BranchRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
-        }
-
-        public List<Branch> GetAll()
-        {
-            return _context.Branches.Where(x => x.IsActive).ToList();
         }
 
         public Branch? GetById(Guid id)
@@ -26,28 +18,6 @@ namespace Infraestructure.Repositories
         public List<Branch> GetByCompany(Guid companyId)
         {
             return _context.Branches.Where(x => x.CompanyId == companyId && x.IsActive).ToList();
-        }
-
-        public Branch Create(Branch newBranch)
-        {
-            _context.Branches.Add(newBranch);
-            _context.SaveChanges();
-
-            return newBranch;
-        }
-
-        public void Update(Branch updatedBranch)
-        {
-            _context.Branches.Update(updatedBranch);
-            _context.SaveChanges();
-        }
-
-        // Baja lógica
-        public void Delete(Branch branchToDelete)
-        {
-            branchToDelete.IsActive = false;
-            _context.Branches.Update(branchToDelete);
-            _context.SaveChanges();
         }
     }
 }
