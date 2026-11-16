@@ -69,6 +69,11 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           value: 'Production'
         }
         {
+          // La API usa DateTime.Now (ventas de hoy, cortes de mes): sin esto el servidor Linux usaría UTC
+          name: 'TZ'
+          value: 'America/Argentina/Buenos_Aires'
+        }
+        {
           // Mantiene /home montado y persistente entre reinicios (alli vive la base SQLite)
           name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
           value: 'true'

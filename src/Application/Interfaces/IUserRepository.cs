@@ -2,13 +2,11 @@ using Domain.Entities;
 
 namespace Application.Interfaces
 {
-    public interface IUserRepository
+    // GetAll, Create, Update y Delete vienen de IRepository<User>
+    public interface IUserRepository : IRepository<User>
     {
-        List<User> GetAll();
+        // La clave del usuario es el CUIT
         User? GetByCuit(string cuit);
         List<User> GetByBranch(Guid branchId);
-        User Create(User newUser);
-        void Update(User updatedUser);
-        void Delete(User userToDelete);
     }
 }

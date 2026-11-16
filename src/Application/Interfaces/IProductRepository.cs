@@ -1,14 +1,14 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 
 namespace Application.Interfaces
 {
-    public interface IProductRepository
+    // GetAll, Create, Update y Delete vienen de IRepository<Product>
+    public interface IProductRepository : IRepository<Product>
     {
-        List<Product> GetAll();
         Product? GetById(Guid id);
-        Product Create(Product newProduct);
-        void Update(Product updatedProduct);
         void UpdateRange(List<Product> updatedProducts);
-        void Delete(Product productToDelete);
+
+        // true si el producto aparece en alguna venta o compra (no se puede borrar sin perder el historial)
+        bool HasMovements(Guid productId);
     }
 }

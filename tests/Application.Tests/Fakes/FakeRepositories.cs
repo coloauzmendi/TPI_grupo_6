@@ -56,6 +56,8 @@ namespace Application.Tests.Fakes
         public Product Create(Product newProduct) { Products.Add(newProduct); return newProduct; }
         public void Update(Product updatedProduct) { }
         public void UpdateRange(List<Product> updatedProducts) => UpdateRangeCalls++;
+        public HashSet<Guid> WithMovements { get; } = new();
+        public bool HasMovements(Guid productId) => WithMovements.Contains(productId);
         public void Delete(Product productToDelete) => Products.Remove(productToDelete);
     }
 
@@ -63,6 +65,7 @@ namespace Application.Tests.Fakes
     {
         public List<BranchStock> Stocks { get; } = new();
 
+        public List<BranchStock> GetAll() => Stocks.Where(s => s.IsActive).ToList();
         public List<BranchStock> GetByBranch(Guid branchId) => Stocks.Where(s => s.BranchId == branchId && s.IsActive).ToList();
         public BranchStock? GetById(Guid branchId, Guid productId) =>
             Stocks.FirstOrDefault(s => s.BranchId == branchId && s.ProductId == productId);
@@ -87,6 +90,11 @@ namespace Application.Tests.Fakes
 
         public List<Sale> GetByUser(string userCuit, DateTime from, DateTime to) =>
             Sales.Where(s => s.UserCuit == userCuit && s.Date >= from && s.Date < to).ToList();
+    }
+
+    public class FakePasswordService : IPasswordService
+    {
+        public string Hash(User user, string password) => $"hash:{password}";
     }
 
     public class FakePurchaseRepository : IPurchaseRepository

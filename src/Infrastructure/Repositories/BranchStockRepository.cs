@@ -4,46 +4,35 @@ using Infraestructure.Data;
 
 namespace Infraestructure.Repositories
 {
-    public class BranchStockRepository : IBranchStockRepository
+    // Create y Update se heredan de Repository<BranchStock>
+    public class BranchStockRepository : Repository<BranchStock>, IBranchStockRepository
     {
-        private readonly ApplicationContext _context;
-
-        public BranchStockRepository(ApplicationContext context)
+        public BranchStockRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
+        }
+
+        // Solo el stock activo
+        public override List<BranchStock> GetAll()
+        {
+            return _dbSet.Where(x => x.IsActive).ToList();
         }
 
         public List<BranchStock> GetByBranch(Guid branchId)
         {
-            return _context.BranchStocks.Where(x => x.BranchId == branchId && x.IsActive).ToList();
+            return _dbSet.Where(x => x.BranchId == branchId && x.IsActive).ToList();
         }
 
         // Devuelve también el stock dado de baja, para poder reactivarlo
         public BranchStock? GetById(Guid branchId, Guid productId)
         {
-            return _context.BranchStocks.FirstOrDefault(x => x.BranchId == branchId && x.ProductId == productId);
+            return _dbSet.FirstOrDefault(x => x.BranchId == branchId && x.ProductId == productId);
         }
 
-        public BranchStock Create(BranchStock newStock)
-        {
-            _context.BranchStocks.Add(newStock);
-            _context.SaveChanges();
-
-            return newStock;
-        }
-
-        public void Update(BranchStock updatedStock)
-        {
-            _context.BranchStocks.Update(updatedStock);
-            _context.SaveChanges();
-        }
-
-        // Baja lógica
-        public void Delete(BranchStock stockToDelete)
+        // Baja lógica: el producto deja de estar activo en la sucursal
+        public override void Delete(BranchStock stockToDelete)
         {
             stockToDelete.IsActive = false;
-            _context.BranchStocks.Update(stockToDelete);
-            _context.SaveChanges();
+            Update(stockToDelete);
         }
     }
 }

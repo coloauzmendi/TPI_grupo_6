@@ -4,50 +4,34 @@ using Infraestructure.Data;
 
 namespace Infraestructure.Repositories
 {
-    public class BranchRepository : IBranchRepository
+    // Create y Update se heredan de Repository<Branch>
+    public class BranchRepository : Repository<Branch>, IBranchRepository
     {
-        private readonly ApplicationContext _context;
-
-        public BranchRepository(ApplicationContext context)
+        public BranchRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
-        public List<Branch> GetAll()
+        // Solo las sucursales activas
+        public override List<Branch> GetAll()
         {
-            return _context.Branches.Where(x => x.IsActive).ToList();
+            return _dbSet.Where(x => x.IsActive).ToList();
         }
 
         public Branch? GetById(Guid id)
         {
-            return _context.Branches.FirstOrDefault(x => x.Id == id && x.IsActive);
+            return _dbSet.FirstOrDefault(x => x.Id == id && x.IsActive);
         }
 
         public List<Branch> GetByCompany(Guid companyId)
         {
-            return _context.Branches.Where(x => x.CompanyId == companyId && x.IsActive).ToList();
-        }
-
-        public Branch Create(Branch newBranch)
-        {
-            _context.Branches.Add(newBranch);
-            _context.SaveChanges();
-
-            return newBranch;
-        }
-
-        public void Update(Branch updatedBranch)
-        {
-            _context.Branches.Update(updatedBranch);
-            _context.SaveChanges();
+            return _dbSet.Where(x => x.CompanyId == companyId && x.IsActive).ToList();
         }
 
         // Baja lógica
-        public void Delete(Branch branchToDelete)
+        public override void Delete(Branch branchToDelete)
         {
             branchToDelete.IsActive = false;
-            _context.Branches.Update(branchToDelete);
-            _context.SaveChanges();
+            Update(branchToDelete);
         }
     }
 }

@@ -5,56 +5,41 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infraestructure.Repositories
 {
-    public class CompanyRepository : ICompanyRepository
+    // Create y Update se heredan de Repository<Company>
+    public class CompanyRepository : Repository<Company>, ICompanyRepository
     {
-        private readonly ApplicationContext _context;
-
-        public CompanyRepository(ApplicationContext context)
+        public CompanyRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
-        public List<Company> GetAll()
+        // Solo las empresas activas
+        public override List<Company> GetAll()
         {
-            return _context.Companies.Where(x => x.IsActive).ToList();
+            return _dbSet.Where(x => x.IsActive).ToList();
         }
 
         public Company? GetById(Guid id)
         {
-            return _context.Companies.FirstOrDefault(x => x.Id == id && x.IsActive);
+            return _dbSet.FirstOrDefault(x => x.Id == id && x.IsActive);
         }
 
         public List<Company> GetByOwner(string ownerCuit)
         {
-            return _context.Companies
+            return _dbSet
                 .Where(c => c.IsActive && c.Owners.Any(o => o.Cuit == ownerCuit))
                 .ToList();
         }
 
-        public Company Create(Company newCompany)
+        // Baja lógica
+        public override void Delete(Company companyToDelete)
         {
-            _context.Companies.Add(newCompany);
-            _context.SaveChanges();
-
-            return newCompany;
-        }
-
-        public void Update(Company updatedCompany)
-        {
-            _context.Companies.Update(updatedCompany);
-            _context.SaveChanges();
-        }
-
-        public void Delete(Company companyToDelete)
-        {
-            companyToDelete.IsActive = false; // baja lógica
-            _context.Companies.Update(companyToDelete);
-            _context.SaveChanges();
+            companyToDelete.IsActive = false;
+            Update(companyToDelete);
         }
 
         public List<User> GetOwners(Guid companyId)
         {
-            return _context.Companies
+            return _dbSet
                 .Where(c => c.Id == companyId)
                 .SelectMany(c => c.Owners)
                 .Where(o => o.IsActive)
@@ -63,7 +48,7 @@ namespace Infraestructure.Repositories
 
         public void AddOwner(Guid companyId, User owner)
         {
-            var company = _context.Companies
+            var company = _dbSet
                 .Include(c => c.Owners)
                 .First(c => c.Id == companyId);
 
@@ -76,7 +61,7 @@ namespace Infraestructure.Repositories
 
         public void RemoveOwner(Guid companyId, string ownerCuit)
         {
-            var company = _context.Companies
+            var company = _dbSet
                 .Include(c => c.Owners)
                 .First(c => c.Id == companyId);
 

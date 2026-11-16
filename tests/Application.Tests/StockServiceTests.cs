@@ -11,7 +11,7 @@ namespace Application.Tests
             TestScenario scenario = new();
             scenario.StockOf(scenario.Hammer).IsActive = false;
 
-            List<StockItemResponse> items = scenario.StockService.GetItems(scenario.Branch.Id);
+            List<StockItemResponse> items = scenario.StockService.GetItems(TestScenario.OwnerCuit, scenario.Branch.Id);
 
             Assert.Equal(new[] { "Gaseosa", "Papas fritas" }, items.Select(i => i.Name));
             StockItemResponse cola = items[0];

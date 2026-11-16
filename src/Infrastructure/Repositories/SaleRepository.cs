@@ -5,20 +5,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infraestructure.Repositories
 {
-    public class SaleRepository : ISaleRepository
+    // Hereda el contexto y el DbSet de Repository<Sale>; la venta se guarda junto con el stock en una transacción
+    public class SaleRepository : Repository<Sale>, ISaleRepository
     {
-        private readonly ApplicationContext _context;
-
-        public SaleRepository(ApplicationContext context)
+        public SaleRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
         public Sale Create(Sale newSale, List<BranchStock> updatedStocks)
         {
-            newSale.Number = (_context.Sales.Max(s => (int?)s.Number) ?? 0) + 1;
+            newSale.Number = (_dbSet.Max(s => (int?)s.Number) ?? 0) + 1;
 
-            _context.Sales.Add(newSale);
+            _dbSet.Add(newSale);
             _context.BranchStocks.UpdateRange(updatedStocks);
             _context.SaveChanges(); // una sola transacción: venta + stock
 
@@ -27,7 +25,7 @@ namespace Infraestructure.Repositories
 
         public List<Sale> GetByBranches(List<Guid> branchIds, DateTime from, DateTime to)
         {
-            return _context.Sales
+            return _dbSet
                 .Include(s => s.Details)
                 .Where(s => branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to)
                 .OrderBy(s => s.Date)
@@ -36,7 +34,7 @@ namespace Infraestructure.Repositories
 
         public List<Sale> GetByUser(string userCuit, DateTime from, DateTime to)
         {
-            return _context.Sales
+            return _dbSet
                 .Include(s => s.Details)
                 .Where(s => s.UserCuit == userCuit && s.Date >= from && s.Date < to)
                 .OrderBy(s => s.Date)

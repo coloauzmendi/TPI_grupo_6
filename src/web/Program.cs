@@ -114,7 +114,9 @@ builder.Services.AddHttpClient<IInflationService, InflationService>(client =>
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
-// Configurar repositorios como Scoped
+// Configurar repositorios como Scoped.
+// El repositorio genérico se registra como tipo abierto: IRepository<Product> se resuelve con Repository<Product>, etc.
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IBranchRepository, BranchRepository>();
@@ -127,6 +129,9 @@ builder.Services.AddScoped<IPurchaseRepository, PurchaseRepository>();
 builder.Services.AddScoped<CompanyService>();
 builder.Services.AddScoped<AccessService>();
 builder.Services.AddScoped<MeService>();
+builder.Services.AddScoped<BranchService>();
+builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<SaleService>();
 builder.Services.AddScoped<PurchaseService>();
@@ -134,6 +139,7 @@ builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ICustomAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IPasswordService, PasswordService>();
 
 // Manejo global de errores: toda excepción no capturada se devuelve como ProblemDetails
 builder.Services.AddExceptionHandler<AppExceptionHandler>();

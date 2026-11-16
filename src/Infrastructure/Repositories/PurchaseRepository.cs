@@ -4,20 +4,18 @@ using Infraestructure.Data;
 
 namespace Infraestructure.Repositories
 {
-    public class PurchaseRepository : IPurchaseRepository
+    // Hereda el contexto y el DbSet de Repository<Purchase>; la compra se guarda junto con el stock en una transacción
+    public class PurchaseRepository : Repository<Purchase>, IPurchaseRepository
     {
-        private readonly ApplicationContext _context;
-
-        public PurchaseRepository(ApplicationContext context)
+        public PurchaseRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
         public Purchase Create(Purchase newPurchase, List<BranchStock> updatedStocks)
         {
-            newPurchase.Number = (_context.Purchases.Max(p => (int?)p.Number) ?? 0) + 1;
+            newPurchase.Number = (_dbSet.Max(p => (int?)p.Number) ?? 0) + 1;
 
-            _context.Purchases.Add(newPurchase);
+            _dbSet.Add(newPurchase);
             _context.BranchStocks.UpdateRange(updatedStocks);
             _context.SaveChanges(); // una sola transacción: compra + stock
 

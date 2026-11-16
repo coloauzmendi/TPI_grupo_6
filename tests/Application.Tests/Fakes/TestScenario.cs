@@ -44,7 +44,10 @@ namespace Application.Tests.Fakes
         public PriceService PriceService => new PriceService(Products, Stocks, Access);
         public SaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
         public PurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
-        public StockService StockService => new StockService(Stocks, Products);
+        public StockService StockService => new StockService(Stocks, Products, Access);
+        public ProductService ProductService => new ProductService(Products, Stocks, Access);
+        public BranchService BranchService => new BranchService(Branches, Users, Access);
+        public UserService UserService => new UserService(Users, Branches, new FakePasswordService(), Access);
 
         public BranchStock StockOf(Product product) => Stocks.GetById(Branch.Id, product.Id)!;
 

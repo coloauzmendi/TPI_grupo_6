@@ -1,15 +1,12 @@
-﻿using Domain.Entities;
+using Domain.Entities;
 
 namespace Application.Interfaces
 {
-    public interface ICompanyRepository
+    // GetAll, Create, Update y Delete vienen de IRepository<Company>
+    public interface ICompanyRepository : IRepository<Company>
     {
-        List<Company> GetAll();
         Company? GetById(Guid id);
         List<Company> GetByOwner(string ownerCuit);
-        Company Create(Company newCompany);
-        void Update(Company updatedCompany);
-        void Delete(Company companyToDelete);
 
         List<User> GetOwners(Guid companyId);
         void AddOwner(Guid companyId, User owner);

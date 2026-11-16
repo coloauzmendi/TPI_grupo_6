@@ -4,51 +4,35 @@ using Infraestructure.Data;
 
 namespace Infraestructure.Repositories
 {
-    public class UserRepository : IUserRepository
+    // Create y Update se heredan de Repository<User>
+    public class UserRepository : Repository<User>, IUserRepository
     {
-        private readonly ApplicationContext _context;
-
-        public UserRepository(ApplicationContext context)
+        public UserRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
-        public List<User> GetAll()
+        // Solo los usuarios activos
+        public override List<User> GetAll()
         {
-            return _context.Users.Where(x => x.IsActive).ToList();
+            return _dbSet.Where(x => x.IsActive).ToList();
         }
 
         // Devuelve también los usuarios dados de baja: el CUIT sigue ocupado
         public User? GetByCuit(string cuit)
         {
-            return _context.Users.FirstOrDefault(x => x.Cuit == cuit);
+            return _dbSet.FirstOrDefault(x => x.Cuit == cuit);
         }
 
         public List<User> GetByBranch(Guid branchId)
         {
-            return _context.Users.Where(x => x.BranchId == branchId && x.IsActive).ToList();
+            return _dbSet.Where(x => x.BranchId == branchId && x.IsActive).ToList();
         }
 
-        public User Create(User newUser)
-        {
-            _context.Users.Add(newUser);
-            _context.SaveChanges();
-
-            return newUser;
-        }
-
-        public void Update(User updatedUser)
-        {
-            _context.Users.Update(updatedUser);
-            _context.SaveChanges();
-        }
-
-        // Baja lógica
-        public void Delete(User userToDelete)
+        // Baja lógica: un usuario inactivo no puede iniciar sesión
+        public override void Delete(User userToDelete)
         {
             userToDelete.IsActive = false;
-            _context.Users.Update(userToDelete);
-            _context.SaveChanges();
+            Update(userToDelete);
         }
     }
 }
