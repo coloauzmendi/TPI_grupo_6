@@ -38,7 +38,9 @@ export default function MonthlyClose() {
   ]
 
   const empty = data && data.current.sales === 0
-  const maxBar = data ? Math.max(1, ...data.months.map((m) => m.total)) : 1
+  const real = data?.realIncome ?? null
+  const realTotal = (m) => real?.realMonths.find((r) => r.year === m.year && r.month === m.month)?.total
+  const maxBar = data ? Math.max(1, ...data.months.map((m) => m.total), ...(real?.realMonths.map((m) => m.total) ?? [])) : 1
   const maxTop = data?.top[0]?.units ?? 1
 
   return (
@@ -80,15 +82,53 @@ export default function MonthlyClose() {
             })}
           </div>
 
+          {real && (() => {
+            const vsPrevReal = compare(data.current.total, real.realPrevious, money)
+            const vsYearReal = compare(data.current.total, real.realLastYear, money)
+            return (
+              <div style={{ background: '#fdf5e8', border: `1px solid ${C.amber}`, borderRadius: 14, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 14, color: '#5b6579' }}>Facturación real · ajustada por inflación (INDEC)</div>
+                    <div style={{ fontSize: 13, color: '#5b6579', marginTop: 2 }}>
+                      Los meses anteriores se expresan en pesos de {monthName(year, month)}.
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 22, fontSize: 13, color: '#5b6579' }}>
+                    <span>Inflación del mes <strong style={{ display: 'block', fontSize: 20, color: '#172033' }}>{real.monthlyPercent.toFixed(2).replace('.', ',')}%</strong></span>
+                    <span>Últimos 12 meses <strong style={{ display: 'block', fontSize: 20, color: '#172033' }}>{real.accumulatedPercent.toFixed(1).replace('.', ',')}%</strong></span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, borderTop: '1px solid rgba(17,26,46,.08)', paddingTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ color: '#5b6579' }}>Crecimiento real vs. {monthName(prevMonth.y, prevMonth.m)} ({money(real.realPrevious)} actualizado)</span><strong style={{ color: vsPrevReal.color }}>{vsPrevReal.text}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ color: '#5b6579' }}>Crecimiento real vs. {monthName(year - 1, month)} ({money(real.realLastYear)} actualizado)</span><strong style={{ color: vsYearReal.color }}>{vsYearReal.text}</strong>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.5fr) minmax(0,1fr)', gap: 18 }}>
             <div style={{ background: '#fff', border: '1px solid #e6e9ef', borderRadius: 16, padding: '20px 22px' }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 17 }}>Facturación de los últimos 12 meses</h3>
+              {real && (
+                <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#667085', margin: '-8px 0 12px' }}>
+                  <span><span style={{ display: 'inline-block', width: 10, height: 10, background: C.purple, borderRadius: 2, marginRight: 6 }} />Facturado</span>
+                  <span><span style={{ display: 'inline-block', width: 10, height: 10, background: C.amber, borderRadius: 2, marginRight: 6 }} />Ajustado por inflación</span>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12,minmax(0,1fr))', gap: 8, height: 220, alignItems: 'end' }}>
                 {data.months.map((m) => {
                   const current = m.year === year && m.month === month
                   return (
                     <div key={`${m.year}-${m.month}`} title={`${monthName(m.year, m.month)}: ${money(m.total)}`} style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: '100%', height: `${Math.round((m.total / maxBar) * 92)}%`, background: current ? C.purple : '#d8d1f5', borderRadius: '6px 6px 2px 2px', minHeight: 2 }} />
+                      <div style={{ width: '100%', height: `${Math.round((Math.max(m.total, realTotal(m) ?? 0) / maxBar) * 92)}%`, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+                        <div style={{ flex: 1, height: `${m.total ? Math.max(2, Math.round((m.total / Math.max(m.total, realTotal(m) ?? 0)) * 100)) : 0}%`, minHeight: 2, background: current ? C.purple : '#d8d1f5', borderRadius: '6px 6px 2px 2px' }} />
+                        {real && <div style={{ flex: 1, height: `${m.total ? Math.max(2, Math.round(((realTotal(m) ?? 0) / Math.max(m.total, realTotal(m) ?? 0)) * 100)) : 0}%`, minHeight: 2, background: current ? C.amber : '#f1d9ad', borderRadius: '6px 6px 2px 2px' }} />}
+                      </div>
                       <span style={{ fontSize: 11, color: current ? '#172033' : '#667085', fontWeight: current ? 700 : 500 }}>{moneyShort(m.total)}</span>
                       <span style={{ fontSize: 12, color: current ? '#172033' : '#8a93a6', fontWeight: current ? 700 : 400 }}>{MESES[m.month - 1].slice(0, 3)}</span>
                     </div>

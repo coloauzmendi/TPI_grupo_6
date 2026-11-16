@@ -71,6 +71,8 @@ namespace Application.Models
         public KpiResponse LastYear { get; set; } = new();
         // Los 12 meses que terminan en el mes pedido
         public List<MonthTotalResponse> Months { get; set; } = new();
+        // Facturación ajustada por inflación; null si el dato del IPC no está disponible
+        public RealIncomeResponse? RealIncome { get; set; }
         public List<TopProductResponse> Top { get; set; } = new();
         // Composición de las ventas de esos mismos 12 meses, por producto
         public List<BreakdownRowResponse> Breakdown { get; set; } = new();

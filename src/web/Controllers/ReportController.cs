@@ -35,8 +35,8 @@ public class ReportController : ControllerBase
 
     [Authorize(Roles = "Owner")]
     [HttpGet("monthly-close")]
-    public ActionResult<MonthlyCloseResponse> GetMonthlyClose(Guid? companyId, Guid? branchId, int year, int month)
+    public async Task<ActionResult<MonthlyCloseResponse>> GetMonthlyClose(Guid? companyId, Guid? branchId, int year, int month)
     {
-        return Ok(_reportService.GetMonthlyClose(User.GetCuit(), companyId, branchId, year, month));
+        return Ok(await _reportService.GetMonthlyCloseAsync(User.GetCuit(), companyId, branchId, year, month));
     }
 }

@@ -48,6 +48,9 @@ export const api = {
   updateEmployee: (cuit, e) => request('PUT', `/api/user/${cuit}`, e),
   deleteEmployee: (cuit) => request('DELETE', `/api/user/${cuit}`),
 
+  // Inflación mensual (IPC del INDEC, vía datos.gob.ar)
+  inflationLatest: () => request('GET', '/api/inflation/latest'),
+
   // Reportes
   today: () => request('GET', '/api/reports/today'),
   ranking: (params) => request('GET', `/api/reports/ranking?${qs(params)}`),

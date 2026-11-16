@@ -4,7 +4,7 @@ import { api } from '../api/endpoints'
 import { useBranches } from '../context/BranchContext'
 import { useToast } from '../context/ToastContext'
 import { C, Icon, PageHeader, errorBox, tableCard, thStyle } from '../components/ui'
-import { money, parseDecimal } from '../utils/format'
+import { MESES, money, parseDecimal } from '../utils/format'
 import { INDUSTRIES, industryLabel } from '../utils/industry'
 
 const COLS = 'minmax(0,2fr) minmax(0,1fr) 130px 130px 100px'
@@ -26,6 +26,11 @@ export default function Prices() {
   const [target, setTarget] = useState('')
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
+  // Inflación del último mes publicado; si el servicio externo falla simplemente no se muestra
+  const [inflation, setInflation] = useState(null)
+  useEffect(() => {
+    api.inflationLatest().then(setInflation).catch(() => setInflation(null))
+  }, [])
 
   // Productos con stock activo en alguna sucursal del dueño: son los que alcanza la actualización
   const load = () =>
@@ -80,6 +85,22 @@ export default function Prices() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <PageHeader title="Actualizar precios" subtitle="Las ventas ya registradas conservan su precio original." />
+
+      {inflation && (
+        <div style={{ background: '#fdf5e8', border: `1px solid ${C.amber}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <Icon name="trending_up" style={{ fontSize: 28, color: C.amber }} />
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 13, color: '#667085' }}>Inflación de {MESES[inflation.month - 1]} de {inflation.year} (INDEC)</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#172033' }}>{inflation.percent.toFixed(2).replace('.', ',')}%</div>
+          </div>
+          <button
+            onClick={() => { setMode('All'); setTarget(''); setValue(String(inflation.percent).replace('.', ',')) }}
+            style={{ height: 42, padding: '0 18px', border: `1px solid ${C.amber}`, borderRadius: 10, background: '#fff', color: '#172033', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+          >
+            Aplicar a todos los productos
+          </button>
+        </div>
+      )}
 
       <div style={{ background: '#fff', border: '1px solid #e6e9ef', borderRadius: 16, padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 10 }}>

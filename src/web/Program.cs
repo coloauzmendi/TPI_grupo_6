@@ -88,6 +88,14 @@ builder.Services.AddCors(options =>
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
+// Servicio de terceros: inflación (IPC del INDEC) desde datos.gob.ar, con HttpClient creado por IHttpClientFactory
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<IInflationService, InflationService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ExternalApis:SeriesBaseUrl"] ?? "https://apis.datos.gob.ar/series/api/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 // Configurar repositorios como Scoped
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
