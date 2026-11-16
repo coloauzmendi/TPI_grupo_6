@@ -7,6 +7,7 @@ namespace web.Extensions;
 public static class DatabaseExtensions
 {
     private const string ConnectionStringKey = "ConnectionStrings:DefaultConnection";
+    private const string SeedEnabledKey = "Seed:Enabled";
 
     // Cada DbContext (uno por request) abre su propia conexión: compartir una sola entre requests
     // simultáneas provoca "SQLite Error 5: unable to delete/modify user-function due to active statements"
@@ -14,6 +15,7 @@ public static class DatabaseExtensions
     {
         string connectionString = configuration.GetRequiredSetting(ConnectionStringKey);
         services.AddDbContext<ApplicationContext>(dbContextOptions => dbContextOptions.UseSqlite(connectionString));
+        services.AddScoped<DatabaseSeeder>();
 
         return services;
     }
@@ -46,6 +48,12 @@ public static class DatabaseExtensions
         {
             ApplicationContext db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
             db.Database.Migrate();
+        }
+
+        if (app.Configuration.GetValue<bool>(SeedEnabledKey))
+        {
+            using IServiceScope scope = app.Services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().Seed();
         }
 
         return app;

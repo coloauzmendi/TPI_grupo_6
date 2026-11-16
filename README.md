@@ -90,6 +90,7 @@ En producción se configuran como variables de entorno; el `:` de la clave se re
 | `AuthenticationService__Audience` | Sí | Audiencia del token |
 | `Cors__AllowedOrigins` | No | Orígenes permitidos, separados por comas. Por defecto `http://localhost:5173` |
 | `Swagger__Enabled` | No | `true` para habilitar Swagger fuera de Development |
+| `Seed__Enabled` | No | `true` para cargar los datos de prueba al iniciar si la base está vacía. En Development viene activado |
 | `ExternalApis__SeriesBaseUrl` | No | URL de la API de series de datos.gob.ar. Por defecto `https://apis.datos.gob.ar/series/api/` |
 | `ASPNETCORE_ENVIRONMENT` | No | `Development` o `Production` |
 
@@ -100,6 +101,32 @@ Se definen en `frontend/.env.development` (ver `frontend/.env.example`):
 | Variable | Descripción |
 |---|---|
 | `VITE_API_URL` | URL base de la API. Por defecto `http://localhost:5015` |
+
+## Datos de prueba
+
+Al iniciar la API, después de aplicar las migraciones, se cargan datos de prueba si `Seed:Enabled` está en `true` y la base está vacía. Nunca duplica ni modifica datos existentes. En `appsettings.Development.json` viene activado y en `appsettings.json` desactivado; se cambia con la variable de entorno `Seed__Enabled=true` o `false`.
+
+El inicio de sesión es con CUIT y contraseña:
+
+| Rol | Nombre | CUIT | Contraseña | Acceso |
+|---|---|---|---|---|
+| Owner | Martín Gómez | `20-30111222-3` | `dueno123` | Kiosco El Sol y Almacén Don José |
+| Owner | Laura Fernández | `27-28444555-6` | `dueno123` | Ferretería La Tuerca |
+| Employee | Sofía Ramírez | `27-35111222-4` | `empleado123` | Kiosco El Sol, Córdoba 1234 (Rosario) |
+| Employee | Lucas Díaz | `20-36222333-5` | `empleado123` | Kiosco El Sol, Alberdi 850 (Rosario) |
+| Employee | Valentina López | `27-37333444-6` | `empleado123` | Almacén Don José, Hipólito Yrigoyen 2100 (Funes) |
+| Employee | Joaquín Torres | `20-38444555-7` | `empleado123` | Ferretería La Tuerca, San Martín 3200 (Rosario) |
+| Employee | Camila Sosa | `27-39555666-8` | `empleado123` | Ferretería La Tuerca, Av. San Martín 900 (Pérez) |
+
+Qué carga:
+
+- 3 empresas con 7 sucursales en total y los usuarios de la tabla.
+- Productos por empresa, incluidos uno sin stock en ninguna sucursal y dos dados de baja.
+- Stock por sucursal con mínimos: algunos productos quedan por debajo del mínimo y uno en 0.
+- Compras con costo unitario: la carga inicial de cada producto y reposiciones posteriores.
+- Ventas de los últimos 30 días, de dueños y de empleados, con el precio unitario guardado y dos anuladas.
+
+La inflación no se carga: se obtiene del servicio externo.
 
 ## Despliegue
 
