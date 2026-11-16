@@ -177,7 +177,8 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Swagger siempre en Development; en Azure se activa con la variable de entorno Swagger__Enabled=true
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
