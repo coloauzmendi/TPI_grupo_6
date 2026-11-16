@@ -1,0 +1,170 @@
+# CI/CD de la Web API hacia Azure App Service (plan Linux F1, gratuito).
+# - Pull requests a main: solo build y test.
+# - Push a main: build y test, despliegue de la infraestructura (Bicep) y despliegue de la API.
+# La autenticacion a Azure es por OIDC (federated credentials): no se guardan contrasenas.
+
+name: Build, test y deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Por defecto ningun job puede pedir tokens OIDC; solo los que se conectan a Azure
+permissions:
+  contents: read
+
+# Evita que dos despliegues a main se ejecuten al mismo tiempo
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  SOLUTION: MiWebApp.slnx
+  WEB_PROJECT: src/web/web.csproj
+  ARTIFACT_NAME: webapi
+
+jobs:
+  build-test:
+    name: Build y test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION }} --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test ${{ env.SOLUTION }} --configuration Release --no-build --verbosity normal
+
+      # Compila el Bicep sin conectarse a Azure: detecta errores de sintaxis tambien en los pull requests
+      - name: Validar Bicep
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
+
+      - name: Publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: dotnet publish ${{ env.WEB_PROJECT }} --configuration Release --no-build --output ./publish
+
+      - name: Subir artefacto
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./publish
+          retention-days: 7
+
+  infra:
+    name: Infraestructura (Bicep)
+    needs: build-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      webAppName: ${{ steps.bicep.outputs.webAppName }}
+      webAppUrl: ${{ steps.bicep.outputs.webAppUrl }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login a Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Desplegar main.bicep
+        id: bicep
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          LOCATION: ${{ vars.AZURE_LOCATION }}
+          WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$RESOURCE_GROUP" ]; then
+            echo "Falta la variable AZURE_RESOURCE_GROUP." >&2
+            exit 1
+          fi
+          if [ ${#JWT_SECRET} -lt 32 ]; then
+            echo "El secreto JWT_SECRET falta o tiene menos de 32 caracteres." >&2
+            exit 1
+          fi
+
+          # Los parametros opcionales solo se envian si la variable esta definida;
+          # si no, Bicep usa sus valores por defecto
+          params=(jwtSecret="$JWT_SECRET")
+          [ -n "$LOCATION" ] && params+=(location="$LOCATION")
+          [ -n "$WEBAPP_NAME" ] && params+=(webAppName="$WEBAPP_NAME")
+          [ -n "$CORS_ALLOWED_ORIGINS" ] && params+=(corsAllowedOrigins="$CORS_ALLOWED_ORIGINS")
+
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "webapi-${GITHUB_RUN_NUMBER}" \
+            --template-file infra/main.bicep \
+            --parameters "${params[@]}" \
+            --query properties.outputs \
+            --output json)
+
+          echo "webAppName=$(echo "$outputs" | jq -r .webAppName.value)" >> "$GITHUB_OUTPUT"
+          echo "webAppUrl=$(echo "$outputs" | jq -r .webAppUrl.value)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy de la API
+    needs: [build-test, infra]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Descargar artefacto
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./publish
+
+      - name: Login a Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Desplegar en App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ needs.infra.outputs.webAppName }}
+          package: ./publish
+
+      # Sin token la API debe responder 401: confirma que arranco y que aplico la configuracion.
+      # El plan F1 tiene arranque en frio, por eso se reintenta varias veces.
+      - name: Verificar que la API responde
+        env:
+          WEBAPP_URL: ${{ needs.infra.outputs.webAppUrl }}
+        run: |
+          for attempt in $(seq 1 12); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$WEBAPP_URL/api/Product" || true)
+            echo "Intento $attempt: HTTP $status"
+            if [ "$status" = "401" ]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "La API no respondio como se esperaba en $WEBAPP_URL" >&2
+          exit 1

@@ -1,0 +1,109 @@
+[1mdiff --git a/src/web/Program.cs b/src/web/Program.cs[m
+[1mindex 36473f3..09f640b 100644[m
+[1m--- a/src/web/Program.cs[m
+[1m+++ b/src/web/Program.cs[m
+[36m@@ -42,18 +42,25 @@[m [mbuilder.Services.AddSwaggerGen(options =>[m
+     });[m
+ });[m
+ [m
+[31m-// Agregar el ApplicationContext al contenedor de servicios[m
+[31m-string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;[m
+[31m-[m
+[31m-// El journal_mode se configura una sola vez al arrancar, con una conexión aparte[m
+[31m-using (var setupConnection = new SqliteConnection(connectionString))[m
+[32m+[m[32m// Valores obligatorios: en desarrollo salen de appsettings.Development.json y en producción de[m
+[32m+[m[32m// variables de entorno (ej. ConnectionStrings__DefaultConnection, AuthenticationService__SecretForKey)[m
+[32m+[m[32mstring RequiredSetting(string key) =>[m
+[32m+[m[32m    string.IsNullOrWhiteSpace(builder.Configuration[key])[m
+[32m+[m[32m        ? throw new InvalidOperationException($"Falta la configuración '{key}' (variable de entorno '{key.Replace(":", "__")}').")[m
+[32m+[m[32m        : builder.Configuration[key]!;[m
+[32m+[m
+[32m+[m[32mstring connectionString = RequiredSetting("ConnectionStrings:DefaultConnection");[m
+[32m+[m[32mstring jwtIssuer = RequiredSetting("AuthenticationService:Issuer");[m
+[32m+[m[32mstring jwtAudience = RequiredSetting("AuthenticationService:Audience");[m
+[32m+[m[32mstring jwtSecret = RequiredSetting("AuthenticationService:SecretForKey");[m
+[32m+[m
+[32m+[m[32m// HMAC-SHA256 exige una clave de al menos 256 bits; si no, el error aparecería recién al primer login[m
+[32m+[m[32mif (Encoding.ASCII.GetByteCount(jwtSecret) < 32)[m
+ {[m
+[31m-    setupConnection.Open();[m
+[31m-    using var command = setupConnection.CreateCommand();[m
+[31m-    command.CommandText = "PRAGMA journal_mode = DELETE;";[m
+[31m-    command.ExecuteNonQuery();[m
+[32m+[m[32m    throw new InvalidOperationException("AuthenticationService:SecretForKey debe tener al menos 32 caracteres.");[m
+ }[m
+ [m
+[32m+[m[32m// Agregar el ApplicationContext al contenedor de servicios.[m
+ // Cada DbContext (uno por request) abre su propia conexión: compartir una sola entre requests[m
+ // simultáneas provoca "SQLite Error 5: unable to delete/modify user-function due to active statements"[m
+ builder.Services.AddDbContext<ApplicationContext>(dbContextOptions => dbContextOptions.UseSqlite(connectionString));[m
+[36m@@ -71,20 +78,31 @@[m [mbuilder.Services.AddAuthentication("Bearer")[m
+             ValidateIssuer = true,[m
+             ValidateAudience = true,[m
+             ValidateIssuerSigningKey = true, // la fecha de expiración se valida por defecto[m
+[31m-            ValidIssuer = builder.Configuration["AuthenticationService:Issuer"],[m
+[31m-            ValidAudience = builder.Configuration["AuthenticationService:Audience"],[m
+[31m-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["AuthenticationService:SecretForKey"]!))[m
+[32m+[m[32m            ValidIssuer = jwtIssuer,[m
+[32m+[m[32m            ValidAudience = jwtAudience,[m
+[32m+[m[32m            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSecret))[m
+         };[m
+     });[m
+ [m
+ builder.Services.Configure<AuthenticationServiceOptions>([m
+     builder.Configuration.GetSection(AuthenticationServiceOptions.AuthenticationService));[m
+ [m
+[31m-// El FrontEnd (Vite) corre en otro origen, así que hay que permitirlo[m
+[32m+[m[32m// El FrontEnd (Vite) corre en otro origen, así que hay que permitirlo.[m
+[32m+[m[32m// Cors:AllowedOrigins puede ser un arreglo en appsettings o, como variable de entorno,[m
+[32m+[m[32m// una lista separada por comas (Cors__AllowedOrigins=https://a.com,https://b.com)[m
+[32m+[m[32mIConfigurationSection corsSection = builder.Configuration.GetSection("Cors:AllowedOrigins");[m
+[32m+[m[32mstring[] allowedOrigins = corsSection.GetChildren().Any()[m
+[32m+[m[32m    ? corsSection.Get<string[]>()![m
+[32m+[m[32m    : (corsSection.Value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);[m
+[32m+[m[32mif (allowedOrigins.Length == 0)[m
+[32m+[m[32m{[m
+[32m+[m[32m    allowedOrigins = ["http://localhost:5173"];[m
+[32m+[m[32m}[m
+[32m+[m
+ const string FrontendCorsPolicy = "Frontend";[m
+ builder.Services.AddCors(options =>[m
+     options.AddPolicy(FrontendCorsPolicy, policy => policy[m
+[31m-        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:5173"])[m
+[32m+[m[32m        .WithOrigins(allowedOrigins)[m
+         .AllowAnyHeader()[m
+         .AllowAnyMethod()));[m
+ [m
+[36m@@ -128,6 +146,32 @@[m [mbuilder.Services.AddProblemDetails(options =>[m
+ [m
+ var app = builder.Build();[m
+ [m
+[32m+[m[32m// Inicialización de la base al arrancar (no se ejecuta durante "dotnet ef", que se detiene en Build)[m
+[32m+[m[32m// 1) SQLite crea el archivo pero no la carpeta: en Azure App Service Linux la base vive en /home/data,[m
+[32m+[m[32m//    que es el único almacenamiento que persiste entre reinicios y despliegues.[m
+[32m+[m[32mstring? databaseFolder = Path.GetDirectoryName(new SqliteConnectionStringBuilder(connectionString).DataSource);[m
+[32m+[m[32mif (!string.IsNullOrEmpty(databaseFolder))[m
+[32m+[m[32m{[m
+[32m+[m[32m    Directory.CreateDirectory(databaseFolder);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// 2) El journal_mode se configura una sola vez, con una conexión aparte. Se usa DELETE y no WAL[m
+[32m+[m[32m//    porque /home en App Service es almacenamiento de red, donde WAL no es confiable.[m
+[32m+[m[32musing (var setupConnection = new SqliteConnection(connectionString))[m
+[32m+[m[32m{[m
+[32m+[m[32m    setupConnection.Open();[m
+[32m+[m[32m    using var command = setupConnection.CreateCommand();[m
+[32m+[m[32m    command.CommandText = "PRAGMA journal_mode = DELETE;";[m
+[32m+[m[32m    command.ExecuteNonQuery();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// 3) Se aplican las migraciones pendientes (crea la base completa si es nueva)[m
+[32m+[m[32musing (IServiceScope scope = app.Services.CreateScope())[m
+[32m+[m[32m{[m
+[32m+[m[32m    ApplicationContext db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();[m
+[32m+[m[32m    db.Database.Migrate();[m
+[32m+[m[32m}[m
+[32m+[m
+ app.UseExceptionHandler();[m
+ // Los 401/403 que genera [Authorize] también se devuelven como ProblemDetails[m
+ app.UseStatusCodePages();[m

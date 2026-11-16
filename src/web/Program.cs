@@ -42,18 +42,25 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Agregar el ApplicationContext al contenedor de servicios
-string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+// Valores obligatorios: en desarrollo salen de appsettings.Development.json y en producción de
+// variables de entorno (ej. ConnectionStrings__DefaultConnection, AuthenticationService__SecretForKey)
+string RequiredSetting(string key) =>
+    string.IsNullOrWhiteSpace(builder.Configuration[key])
+        ? throw new InvalidOperationException($"Falta la configuración '{key}' (variable de entorno '{key.Replace(":", "__")}').")
+        : builder.Configuration[key]!;
 
-// El journal_mode se configura una sola vez al arrancar, con una conexión aparte
-using (var setupConnection = new SqliteConnection(connectionString))
+string connectionString = RequiredSetting("ConnectionStrings:DefaultConnection");
+string jwtIssuer = RequiredSetting("AuthenticationService:Issuer");
+string jwtAudience = RequiredSetting("AuthenticationService:Audience");
+string jwtSecret = RequiredSetting("AuthenticationService:SecretForKey");
+
+// HMAC-SHA256 exige una clave de al menos 256 bits; si no, el error aparecería recién al primer login
+if (Encoding.ASCII.GetByteCount(jwtSecret) < 32)
 {
-    setupConnection.Open();
-    using var command = setupConnection.CreateCommand();
-    command.CommandText = "PRAGMA journal_mode = DELETE;";
-    command.ExecuteNonQuery();
+    throw new InvalidOperationException("AuthenticationService:SecretForKey debe tener al menos 32 caracteres.");
 }
 
+// Agregar el ApplicationContext al contenedor de servicios.
 // Cada DbContext (uno por request) abre su propia conexión: compartir una sola entre requests
 // simultáneas provoca "SQLite Error 5: unable to delete/modify user-function due to active statements"
 builder.Services.AddDbContext<ApplicationContext>(dbContextOptions => dbContextOptions.UseSqlite(connectionString));
@@ -71,20 +78,31 @@ builder.Services.AddAuthentication("Bearer")
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateIssuerSigningKey = true, // la fecha de expiración se valida por defecto
-            ValidIssuer = builder.Configuration["AuthenticationService:Issuer"],
-            ValidAudience = builder.Configuration["AuthenticationService:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["AuthenticationService:SecretForKey"]!))
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSecret))
         };
     });
 
 builder.Services.Configure<AuthenticationServiceOptions>(
     builder.Configuration.GetSection(AuthenticationServiceOptions.AuthenticationService));
 
-// El FrontEnd (Vite) corre en otro origen, así que hay que permitirlo
+// El FrontEnd (Vite) corre en otro origen, así que hay que permitirlo.
+// Cors:AllowedOrigins puede ser un arreglo en appsettings o, como variable de entorno,
+// una lista separada por comas (Cors__AllowedOrigins=https://a.com,https://b.com)
+IConfigurationSection corsSection = builder.Configuration.GetSection("Cors:AllowedOrigins");
+string[] allowedOrigins = corsSection.GetChildren().Any()
+    ? corsSection.Get<string[]>()!
+    : (corsSection.Value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+if (allowedOrigins.Length == 0)
+{
+    allowedOrigins = ["http://localhost:5173"];
+}
+
 const string FrontendCorsPolicy = "Frontend";
 builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy => policy
-        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:5173"])
+        .WithOrigins(allowedOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
@@ -127,6 +145,32 @@ builder.Services.AddProblemDetails(options =>
 });
 
 var app = builder.Build();
+
+// Inicialización de la base al arrancar (no se ejecuta durante "dotnet ef", que se detiene en Build)
+// 1) SQLite crea el archivo pero no la carpeta: en Azure App Service Linux la base vive en /home/data,
+//    que es el único almacenamiento que persiste entre reinicios y despliegues.
+string? databaseFolder = Path.GetDirectoryName(new SqliteConnectionStringBuilder(connectionString).DataSource);
+if (!string.IsNullOrEmpty(databaseFolder))
+{
+    Directory.CreateDirectory(databaseFolder);
+}
+
+// 2) El journal_mode se configura una sola vez, con una conexión aparte. Se usa DELETE y no WAL
+//    porque /home en App Service es almacenamiento de red, donde WAL no es confiable.
+using (var setupConnection = new SqliteConnection(connectionString))
+{
+    setupConnection.Open();
+    using var command = setupConnection.CreateCommand();
+    command.CommandText = "PRAGMA journal_mode = DELETE;";
+    command.ExecuteNonQuery();
+}
+
+// 3) Se aplican las migraciones pendientes (crea la base completa si es nueva)
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    ApplicationContext db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+    db.Database.Migrate();
+}
 
 app.UseExceptionHandler();
 // Los 401/403 que genera [Authorize] también se devuelven como ProblemDetails
