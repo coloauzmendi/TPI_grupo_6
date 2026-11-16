@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -44,15 +43,6 @@ builder.Services.AddSwaggerGen(options =>
 
 // Agregar el ApplicationContext al contenedor de servicios
 string connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
-
-// El journal_mode se configura una sola vez al arrancar, con una conexión aparte
-using (var setupConnection = new SqliteConnection(connectionString))
-{
-    setupConnection.Open();
-    using var command = setupConnection.CreateCommand();
-    command.CommandText = "PRAGMA journal_mode = DELETE;";
-    command.ExecuteNonQuery();
-}
 
 // Cada DbContext (uno por request) abre su propia conexión: compartir una sola entre requests
 // simultáneas provoca "SQLite Error 5: unable to delete/modify user-function due to active statements"
@@ -133,7 +123,8 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Swagger siempre en Development; en Azure se activa con la variable de entorno Swagger__Enabled=true
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
