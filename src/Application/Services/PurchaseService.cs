@@ -62,7 +62,7 @@ namespace Application.Services
 
                 StockService.EnsureMaxStock(stock.Quantity + quantity);
 
-                stock.Quantity += (int)quantity;
+                stock.Add((int)quantity);
                 updatedStocks.Add(stock);
                 newStocks[group.Key] = stock.Quantity;
 

@@ -16,8 +16,6 @@ namespace Infrastructure.Repositories
 
         public Purchase Create(Purchase newPurchase, List<BranchStock> updatedStocks)
         {
-            newPurchase.Number = (_context.Purchases.Max(p => (int?)p.Number) ?? 0) + 1;
-
             _context.Purchases.Add(newPurchase);
 
             // El stock que se da de alta en la sucursal todavía no existe: se inserta en lugar de actualizarse
@@ -36,7 +34,9 @@ namespace Infrastructure.Repositories
                 }
             }
 
-            _context.SaveChanges(); // una sola transacción: compra + stock
+            // una sola transacción: compra + stock
+            NumberConflictRetry.SaveChanges(_context, nameof(ApplicationContext.Purchases),
+                () => newPurchase.Number = (_context.Purchases.Max(p => (int?)p.Number) ?? 0) + 1);
 
             return newPurchase;
         }

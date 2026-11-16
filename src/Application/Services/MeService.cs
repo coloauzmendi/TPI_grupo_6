@@ -88,7 +88,7 @@ namespace Application.Services
 
             return _accessService.GetBranches(cuit)
                 .SelectMany(b => _stockRepository.GetByBranch(b.Id))
-                .Where(s => s.Quantity <= s.MinimumStock && products.ContainsKey(s.ProductId))
+                .Where(s => s.IsLow && products.ContainsKey(s.ProductId))
                 .Select(s => new StockAlertResponse
                 {
                     BranchId = s.BranchId,

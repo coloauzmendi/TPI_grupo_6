@@ -86,7 +86,9 @@ namespace Application.Tests.Fakes
                 Price = price,
                 CompanyId = branch.CompanyId
             });
-            Stocks.Create(new BranchStock { BranchId = branch.Id, ProductId = product.Id, Quantity = quantity, MinimumStock = minimum });
+            BranchStock stock = new BranchStock { BranchId = branch.Id, ProductId = product.Id, MinimumStock = minimum };
+            stock.SetQuantity(quantity);
+            Stocks.Create(stock);
             return product;
         }
     }

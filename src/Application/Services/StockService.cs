@@ -96,7 +96,7 @@ namespace Application.Services
             decimal unitCost = UnitCostCalculator.Resolve(request.UnitCost, request.TotalCost, request.Quantity);
 
             BranchStock stock = existing ?? new BranchStock { BranchId = branchId, ProductId = request.ProductId };
-            stock.Quantity = request.Quantity;
+            stock.SetQuantity(request.Quantity);
             stock.MinimumStock = request.MinimumStock;
             stock.IsActive = true;
 
@@ -127,7 +127,7 @@ namespace Application.Services
             _accessService.EnsureBranchAccess(cuit, branchId);
             BranchStock stock = GetActive(branchId, productId);
 
-            stock.Quantity = request.Quantity;
+            stock.SetQuantity(request.Quantity);
             stock.MinimumStock = request.MinimumStock;
             _stockRepository.Update(stock);
         }

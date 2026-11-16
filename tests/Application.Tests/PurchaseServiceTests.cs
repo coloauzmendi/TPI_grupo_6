@@ -107,7 +107,7 @@ namespace Application.Tests
         public void Create_StockResultanteMayorAlTope_LanzaValidacionYNoGuarda()
         {
             TestScenario scenario = new();
-            scenario.StockOf(scenario.Cola).Quantity = 950_000;
+            scenario.StockOf(scenario.Cola).SetQuantity(950_000);
             PurchaseRequest request = new()
             {
                 Items = { new PurchaseItemRequest { ProductId = scenario.Cola.Id, Quantity = 60_000, UnitCost = 600m } }

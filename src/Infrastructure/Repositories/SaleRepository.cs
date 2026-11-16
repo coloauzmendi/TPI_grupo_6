@@ -16,11 +16,12 @@ namespace Infrastructure.Repositories
 
         public Sale Create(Sale newSale, List<BranchStock> updatedStocks)
         {
-            newSale.Number = (_context.Sales.Max(s => (int?)s.Number) ?? 0) + 1;
-
             _context.Sales.Add(newSale);
             _context.BranchStocks.UpdateRange(updatedStocks);
-            _context.SaveChanges(); // una sola transacción: venta + stock
+
+            // una sola transacción: venta + stock
+            NumberConflictRetry.SaveChanges(_context, nameof(ApplicationContext.Sales),
+                () => newSale.Number = (_context.Sales.Max(s => (int?)s.Number) ?? 0) + 1);
 
             return newSale;
         }

@@ -15,7 +15,8 @@ namespace Application.Tests
         {
             TestScenario scenario = new();
             Branch other = scenario.Branches.Create(new Branch { Id = Guid.NewGuid(), CompanyId = scenario.Company.Id, Locality = "Funes" });
-            BranchStock otherStock = scenario.Stocks.Create(new BranchStock { BranchId = other.Id, ProductId = scenario.Cola.Id, Quantity = 4 });
+            BranchStock otherStock = scenario.Stocks.Create(new BranchStock { BranchId = other.Id, ProductId = scenario.Cola.Id });
+            otherStock.SetQuantity(4);
 
             scenario.ProductService.Delete(TestScenario.OwnerCuit, scenario.Cola.Id);
 

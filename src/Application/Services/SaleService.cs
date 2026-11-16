@@ -57,7 +57,7 @@ namespace Application.Services
                     throw new AppValidationException($"Stock insuficiente para {product.Name}.");
                 }
 
-                stock.Quantity -= (int)quantity;
+                stock.Remove((int)quantity);
                 updatedStocks.Add(stock);
 
                 // El precio queda guardado: si el producto cambia de precio, esta venta no se modifica
@@ -69,7 +69,7 @@ namespace Application.Services
                     UnitPrice = product.Price
                 });
 
-                if (stock.Quantity <= stock.MinimumStock)
+                if (stock.IsLow)
                 {
                     alerts.Add($"{product.Name} quedó en {stock.Quantity} u. (mínimo {stock.MinimumStock})");
                 }
@@ -113,7 +113,7 @@ namespace Application.Services
                 BranchStock? stock = _stockRepository.GetById(branchId, detail.ProductId);
                 if (stock is not null)
                 {
-                    stock.Quantity += detail.Quantity;
+                    stock.Add(detail.Quantity);
                     restoredStocks.Add(stock);
                 }
             }
