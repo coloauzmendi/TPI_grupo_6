@@ -6,6 +6,8 @@ namespace Application.Interfaces
     {
         List<Product> GetAll();
         List<Product> GetAllIncludingInactive();
+        List<Product> GetByCompanies(List<Guid> companyIds);
+        List<Product> GetByCompanyIncludingInactive(Guid companyId);
         Product? GetById(Guid id);
         Product Create(Product newProduct);
         void Update(Product updatedProduct);

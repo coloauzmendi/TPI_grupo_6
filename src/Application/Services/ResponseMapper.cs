@@ -15,7 +15,8 @@ namespace Application.Services
                 Brand = product.Brand,
                 Category = product.Category,
                 Price = product.Price,
-                Industry = product.Industry
+                Industry = product.Industry,
+                CompanyId = product.CompanyId
             };
         }
 

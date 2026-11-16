@@ -24,6 +24,13 @@ namespace Application.Models
         public Industry Industry { get; set; }
     }
 
+    // La empresa solo se indica en el alta: un producto no puede cambiar de empresa
+    public class ProductCreateRequest : ProductRequest
+    {
+        [Required(ErrorMessage = "La empresa es obligatoria.")]
+        public Guid? CompanyId { get; set; }
+    }
+
     public class ProductResponse
     {
         public Guid Id { get; set; }
@@ -32,5 +39,6 @@ namespace Application.Models
         public string Category { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public Industry Industry { get; set; }
+        public Guid CompanyId { get; set; }
     }
 }

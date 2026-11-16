@@ -1,4 +1,5 @@
-﻿using Application.Models;
+﻿using Application.Interfaces;
+using Application.Models;
 using Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,32 +12,32 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class ProductController : ControllerBase
 {
-    private readonly ProductService _productService;
+    private readonly IProductService _productService;
     private readonly PriceService _priceService;
 
-    public ProductController(ProductService productService, PriceService priceService)
+    public ProductController(IProductService productService, PriceService priceService)
     {
         _productService = productService;
         _priceService = priceService;
     }
 
     [HttpGet]
-    public ActionResult<List<ProductResponse>> GetAll()
+    public ActionResult<List<ProductResponse>> GetAll(Guid? companyId)
     {
-        return Ok(_productService.GetAll());
+        return Ok(_productService.GetAll(User.GetCuit(), companyId));
     }
 
     [HttpGet("{id}")]
     public ActionResult<ProductResponse> GetById(Guid id)
     {
-        return Ok(_productService.GetById(id));
+        return Ok(_productService.GetById(User.GetCuit(), id));
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPost]
-    public ActionResult<ProductResponse> Create(ProductRequest request)
+    public ActionResult<ProductResponse> Create(ProductCreateRequest request)
     {
-        ProductResponse created = _productService.Create(request);
+        ProductResponse created = _productService.Create(User.GetCuit(), request);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -44,7 +45,7 @@ public class ProductController : ControllerBase
     [HttpPut("{id}")]
     public IActionResult Update(Guid id, ProductRequest request)
     {
-        _productService.Update(id, request);
+        _productService.Update(User.GetCuit(), id, request);
         return NoContent();
     }
 
@@ -52,7 +53,7 @@ public class ProductController : ControllerBase
     [HttpDelete("{id}")]
     public IActionResult Delete(Guid id)
     {
-        _productService.Delete(id);
+        _productService.Delete(User.GetCuit(), id);
         return NoContent();
     }
 

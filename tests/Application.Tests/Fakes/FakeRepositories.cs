@@ -54,6 +54,9 @@ namespace Application.Tests.Fakes
 
         public List<Product> GetAll() => Products.Where(p => p.IsActive).ToList();
         public List<Product> GetAllIncludingInactive() => Products.ToList();
+        public List<Product> GetByCompanies(List<Guid> companyIds) =>
+            Products.Where(p => p.IsActive && companyIds.Contains(p.CompanyId)).ToList();
+        public List<Product> GetByCompanyIncludingInactive(Guid companyId) => Products.Where(p => p.CompanyId == companyId).ToList();
         public Product? GetById(Guid id) => Products.FirstOrDefault(p => p.Id == id && p.IsActive);
         public Product Create(Product newProduct) { Products.Add(newProduct); return newProduct; }
         public void Update(Product updatedProduct) { }

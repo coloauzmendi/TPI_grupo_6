@@ -16,6 +16,8 @@ namespace Domain.Entities
 
         public Industry Industry { get; set; }
 
+        public Guid CompanyId { get; set; }
+
         // Baja lógica
         public bool IsActive { get; set; } = true;
     }

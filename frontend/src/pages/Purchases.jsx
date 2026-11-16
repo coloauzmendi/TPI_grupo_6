@@ -26,7 +26,7 @@ export default function Purchases() {
   const load = useCallback(() => {
     if (!active) return
     api.stock(active.id).then(setItems).catch((e) => toast(e.message, 'err'))
-    api.products().then(setProducts).catch(() => {})
+    api.products(active.companyId).then(setProducts).catch(() => {})
   }, [active, toast])
   useEffect(load, [load])
 
@@ -38,7 +38,7 @@ export default function Purchases() {
 
   const inStock = Object.fromEntries(items.map((i) => [i.productId, i]))
   const term = q.toLowerCase().trim()
-  // Productos de la sucursal + productos del mismo rubro que todavía no tienen alta en ella
+  // Productos de la sucursal + productos de la empresa del mismo rubro que todavía no tienen alta en ella
   const catalog = [
     ...items,
     ...products

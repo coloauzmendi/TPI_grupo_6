@@ -20,7 +20,7 @@ export const api = {
   stockAlerts: () => request('GET', '/api/me/stock-alerts'),
 
   // Productos y stock
-  products: () => request('GET', '/api/product'),
+  products: (companyId) => request('GET', `/api/product?${qs({ companyId })}`),
   createProduct: (p) => request('POST', '/api/product', p),
   updateProduct: (id, p) => request('PUT', `/api/product/${id}`, p),
   updatePrices: (data) => request('POST', '/api/product/prices', data),

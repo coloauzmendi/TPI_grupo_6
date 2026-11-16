@@ -110,13 +110,13 @@ export default function Stock() {
           await api.updateStock(active.id, form.id, stock)
           message = 'Cambios guardados'
         } else {
-          const existing = (await api.products()).find((p) => productKey(p) === productKey(product))
+          const existing = (await api.products(active.companyId)).find((p) => productKey(p) === productKey(product))
           if (existing) {
             if (items.some((i) => i.productId === existing.id && i.isActive)) throw new Error('Ese producto ya está cargado en esta sucursal')
             await api.createStock(active.id, { productId: existing.id, ...stock })
             message = 'El producto ya existía: se cargó el stock con el precio vigente'
           } else {
-            const created = await api.createProduct(product)
+            const created = await api.createProduct({ ...product, companyId: active.companyId })
             await api.createStock(active.id, { productId: created.id, ...stock })
             message = 'Alta realizada correctamente'
           }

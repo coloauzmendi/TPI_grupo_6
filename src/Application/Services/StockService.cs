@@ -67,11 +67,17 @@ namespace Application.Services
         // Si el producto estaba dado de baja en la sucursal, se reactiva
         public BranchStockResponse Create(string cuit, Guid branchId, BranchStockCreateRequest request)
         {
-            _accessService.EnsureBranchAccess(cuit, branchId);
+            Branch branch = _accessService.EnsureBranchAccess(cuit, branchId);
 
-            if (_productRepository.GetById(request.ProductId) is null)
+            Product? product = _productRepository.GetById(request.ProductId);
+            if (product is null)
             {
                 throw new AppValidationException("El producto indicado no existe.");
+            }
+
+            if (product.CompanyId != branch.CompanyId)
+            {
+                throw new AppValidationException("El producto no pertenece a la empresa de la sucursal.");
             }
 
             BranchStock? existing = _stockRepository.GetById(branchId, request.ProductId);

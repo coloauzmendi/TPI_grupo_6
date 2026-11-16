@@ -33,6 +33,14 @@ namespace Application.Tests
         }
 
         [Fact]
+        public void ProductCreateRequest_SinEmpresa_EsInvalido()
+        {
+            ProductCreateRequest request = new() { Name = "Gaseosa", Brand = "Generica", Category = "Bebidas", Price = 100m };
+
+            Assert.Contains(Validate(request), r => r.MemberNames.Contains(nameof(ProductCreateRequest.CompanyId)));
+        }
+
+        [Fact]
         public void ProductRequest_MarcaDemasiadoLarga_EsInvalido()
         {
             ProductRequest request = new() { Name = "Gaseosa", Brand = new string('a', 51), Category = "Bebidas", Price = 100m };

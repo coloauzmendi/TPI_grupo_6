@@ -30,13 +30,16 @@ namespace Application.Services
         {
             ValidateValue(request);
 
-            // Solo se tocan los productos que tienen stock activo en las sucursales del dueño
+            List<Guid> companyIds = ResolveCompanies(cuit, request.CompanyId);
+
+            // Solo se tocan los productos de esas empresas que tienen stock activo en sus sucursales
             HashSet<Guid> productIds = _accessService.GetBranches(cuit)
+                .Where(b => companyIds.Contains(b.CompanyId))
                 .SelectMany(b => _stockRepository.GetByBranch(b.Id))
                 .Select(s => s.ProductId)
                 .ToHashSet();
 
-            List<Product> scope = _productRepository.GetAll().Where(p => productIds.Contains(p.Id)).ToList();
+            List<Product> scope = _productRepository.GetByCompanies(companyIds).Where(p => productIds.Contains(p.Id)).ToList();
             List<Product> targets = request.Mode switch
             {
                 PriceMode.Individual => scope.Where(p => p.Id.ToString() == request.Target).ToList(),
@@ -72,6 +75,17 @@ namespace Application.Services
             _productRepository.UpdateRange(targets);
 
             return targets.Count;
+        }
+
+        // Todas las empresas del dueño, o solo la indicada si es suya
+        private List<Guid> ResolveCompanies(string cuit, Guid? companyId)
+        {
+            if (companyId is not null)
+            {
+                return new List<Guid> { _accessService.EnsureCompanyOwner(cuit, companyId.Value).Id };
+            }
+
+            return _accessService.GetCompanies(cuit).Select(c => c.Id).ToList();
         }
 
         private static void ValidateValue(PriceUpdateRequest request)

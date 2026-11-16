@@ -1,5 +1,6 @@
 using Application.Models;
 using Application.Tests.Fakes;
+using Domain.Entities;
 using Domain.Enums;
 using Domain.Exceptions;
 
@@ -95,6 +96,73 @@ namespace Application.Tests
                 Value = -99m
             }));
             Assert.Equal(0, scenario.Products.UpdateRangeCalls);
+        }
+
+        [Fact]
+        public void Update_Total_NoAfectaProductosDeOtraEmpresa()
+        {
+            TestScenario scenario = new();
+            Product outsider = scenario.AddOutsiderProduct();
+
+            int updated = scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.All,
+                Value = 10m
+            });
+
+            Assert.Equal(3, updated);
+            Assert.Equal(1100m, scenario.Cola.Price);
+            Assert.Equal(1000m, outsider.Price);
+        }
+
+        [Fact]
+        public void Update_IndividualConProductoDeOtraEmpresa_LanzaValidacionYNoCambia()
+        {
+            TestScenario scenario = new();
+            Product outsider = scenario.AddOutsiderProduct();
+
+            Assert.Throws<AppValidationException>(() => scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.Individual,
+                Target = outsider.Id.ToString(),
+                Value = 1m
+            }));
+            Assert.Equal(1000m, outsider.Price);
+        }
+
+        [Fact]
+        public void Update_ConEmpresaAjena_LanzaNotAllowed()
+        {
+            TestScenario scenario = new();
+            Product outsider = scenario.AddOutsiderProduct();
+
+            Assert.Throws<NotAllowedException>(() => scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.All,
+                Value = 10m,
+                CompanyId = outsider.CompanyId
+            }));
+            Assert.Equal(1000m, outsider.Price);
+            Assert.Equal(1000m, scenario.Cola.Price);
+        }
+
+        [Fact]
+        public void Update_ConEmpresa_SoloAfectaEsaEmpresa()
+        {
+            TestScenario scenario = new();
+            Product outsider = scenario.AddOutsiderProduct();
+            scenario.Companies.GetById(outsider.CompanyId)!.Owners.Add(scenario.Users.GetByCuit(TestScenario.OwnerCuit)!);
+
+            int updated = scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.All,
+                Value = 10m,
+                CompanyId = scenario.Company.Id
+            });
+
+            Assert.Equal(3, updated);
+            Assert.Equal(1100m, scenario.Cola.Price);
+            Assert.Equal(1000m, outsider.Price);
         }
 
         [Fact]

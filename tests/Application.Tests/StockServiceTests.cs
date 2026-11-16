@@ -40,7 +40,7 @@ namespace Application.Tests
         public void GetItems_IncludeInactive_NoDevuelveProductosDadosDeBaja()
         {
             TestScenario scenario = new();
-            scenario.ProductService.Delete(scenario.Chips.Id);
+            scenario.ProductService.Delete(TestScenario.OwnerCuit, scenario.Chips.Id);
 
             List<StockItemResponse> items = scenario.StockService.GetItems(TestScenario.OwnerCuit, scenario.Branch.Id, includeInactive: true);
 
@@ -124,10 +124,21 @@ namespace Application.Tests
         }
 
         [Fact]
+        public void Create_ProductoDeOtraEmpresa_LanzaValidacionYNoCargaStock()
+        {
+            TestScenario scenario = new();
+            Product outsider = scenario.AddOutsiderProduct();
+
+            Assert.Throws<AppValidationException>(() => scenario.StockService.Create(TestScenario.OwnerCuit, scenario.Branch.Id,
+                new BranchStockCreateRequest { ProductId = outsider.Id, Quantity = 5, MinimumStock = 1 }));
+            Assert.Null(scenario.Stocks.GetById(scenario.Branch.Id, outsider.Id));
+        }
+
+        [Fact]
         public void GetItems_ProductoDadoDeBaja_NoAparece()
         {
             TestScenario scenario = new();
-            scenario.ProductService.Delete(scenario.Chips.Id);
+            scenario.ProductService.Delete(TestScenario.OwnerCuit, scenario.Chips.Id);
 
             List<StockItemResponse> items = scenario.StockService.GetItems(TestScenario.OwnerCuit, scenario.Branch.Id);
 

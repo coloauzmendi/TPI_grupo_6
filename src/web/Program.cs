@@ -127,7 +127,7 @@ builder.Services.AddScoped<AccessService>();
 builder.Services.AddScoped<MeService>();
 builder.Services.AddScoped<BranchService>();
 builder.Services.AddScoped<StockService>();
-builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IInflationRateService, InflationRateService>();
 builder.Services.AddScoped<SaleService>();

@@ -83,6 +83,12 @@ namespace Infraestructure.Data
                 entity.Property(p => p.Industry).HasConversion<string>();
                 entity.Property(p => p.IsActive).HasDefaultValue(true);
 
+                // Cada producto pertenece a una sola empresa
+                entity.HasOne<Company>()
+                    .WithMany()
+                    .HasForeignKey(p => p.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.ToTable(t => t.HasCheckConstraint("CK_Products_Price", "Price >= 0"));
             });
 
