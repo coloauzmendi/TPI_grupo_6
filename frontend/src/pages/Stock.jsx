@@ -16,6 +16,14 @@ function statusOf(i) {
   return { text: 'OK', bg: '#e3f4ea', fg: '#17783f' }
 }
 
+const COST_TYPES = [{ value: 'unit', label: 'Costo por unidad' }, { value: 'total', label: 'Costo total' }]
+
+// En el alta y la reactivación se informa el costo de la mercadería cargada
+const COST_FIELDS = [
+  { key: 'costType', label: 'Tipo de costo', options: COST_TYPES },
+  { key: 'cost', label: 'Importe ($)', placeholder: '0,00' },
+]
+
 const PRODUCT_FIELDS = (editing) => [
   { key: 'name', label: 'Nombre', full: true, placeholder: 'Ej.: Coca-Cola 500ml' },
   { key: 'brand', label: 'Marca' },
@@ -24,11 +32,13 @@ const PRODUCT_FIELDS = (editing) => [
   { key: 'price', label: 'Precio ($)', placeholder: '0,00' },
   { key: 'quantity', label: editing ? 'Cantidad en stock' : 'Cantidad inicial' },
   { key: 'minimumStock', label: 'Stock mínimo' },
+  ...(editing ? [] : COST_FIELDS),
 ]
 
 const STOCK_FIELDS = [
   { key: 'quantity', label: 'Cantidad inicial' },
   { key: 'minimumStock', label: 'Stock mínimo' },
+  ...COST_FIELDS,
 ]
 
 const productKey = (p) => `${p.name.trim().toLowerCase()}|${p.brand.trim().toLowerCase()}`
@@ -59,7 +69,7 @@ export default function Stock() {
   const categories = [...new Set(items.map((i) => i.category))].sort()
 
   const openNew = () =>
-    setForm({ values: { name: '', brand: '', category: '', industry: active.industry, price: '', quantity: '1', minimumStock: '5' }, errors: {} })
+    setForm({ values: { name: '', brand: '', category: '', industry: active.industry, price: '', quantity: '1', minimumStock: '5', costType: 'unit', cost: '' }, errors: {} })
   const openEdit = (i) =>
     setForm({
       id: i.productId,
@@ -67,7 +77,7 @@ export default function Stock() {
       errors: {},
     })
   const openReactivate = (i) =>
-    setForm({ reactivate: i, values: { quantity: '1', minimumStock: String(i.minimumStock) }, errors: {} })
+    setForm({ reactivate: i, values: { quantity: '1', minimumStock: String(i.minimumStock), costType: 'unit', cost: '' }, errors: {} })
 
   const change = (key, value) => setForm((f) => ({ ...f, values: { ...f.values, [key]: value }, errors: { ...f.errors, [key]: null } }))
 
@@ -87,8 +97,15 @@ export default function Stock() {
       const n = Number(v[k])
       if (v[k].trim() === '' || !Number.isInteger(n) || n < min || n > 100000) e[k] = `Ingresá un número entero entre ${min} y 100.000`
     })
+    if (!form.id) {
+      const cost = parseDecimal(v.cost)
+      const max = v.costType === 'total' ? 9999999999.99 : 99999999.99
+      if (isNaN(cost) || cost < 0.01 || cost > max) e.cost = `Ingresá un importe entre 0,01 y ${v.costType === 'total' ? '9.999.999.999,99' : '99.999.999,99'}`
+    }
     return e
   }
+
+  const costOf = (v) => (v.costType === 'total' ? { totalCost: parseDecimal(v.cost) } : { unitCost: parseDecimal(v.cost) })
 
   const save = async () => {
     const errors = validate(form.values)
@@ -101,7 +118,7 @@ export default function Stock() {
     try {
       let message
       if (form.reactivate) {
-        await api.createStock(active.id, { productId: form.reactivate.productId, ...stock })
+        await api.createStock(active.id, { productId: form.reactivate.productId, ...stock, ...costOf(v) })
         message = 'Producto reactivado'
       } else {
         const product = { name: v.name.trim(), brand: v.brand.trim(), category: v.category.trim(), price: parseDecimal(v.price), industry: v.industry }
@@ -113,11 +130,11 @@ export default function Stock() {
           const existing = (await api.products(active.companyId)).find((p) => productKey(p) === productKey(product))
           if (existing) {
             if (items.some((i) => i.productId === existing.id && i.isActive)) throw new Error('Ese producto ya está cargado en esta sucursal')
-            await api.createStock(active.id, { productId: existing.id, ...stock })
+            await api.createStock(active.id, { productId: existing.id, ...stock, ...costOf(v) })
             message = 'El producto ya existía: se cargó el stock con el precio vigente'
           } else {
             const created = await api.createProduct({ ...product, companyId: active.companyId })
-            await api.createStock(active.id, { productId: created.id, ...stock })
+            await api.createStock(active.id, { productId: created.id, ...stock, ...costOf(v) })
             message = 'Alta realizada correctamente'
           }
         }

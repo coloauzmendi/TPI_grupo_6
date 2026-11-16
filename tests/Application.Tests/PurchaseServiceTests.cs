@@ -118,5 +118,66 @@ namespace Application.Tests
             Assert.Equal(950_000, scenario.StockOf(scenario.Cola).Quantity);
             Assert.Empty(scenario.Purchases.Purchases);
         }
+
+        [Fact]
+        public void Create_ConCostoTotal_CalculaElCostoUnitario()
+        {
+            TestScenario scenario = new();
+            PurchaseRequest request = new()
+            {
+                Items = { new PurchaseItemRequest { ProductId = scenario.Cola.Id, Quantity = 3, TotalCost = 1000m } }
+            };
+
+            PurchaseResponse result = scenario.PurchaseService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, request);
+
+            Assert.Equal(333.33m, result.Items.Single().UnitCost);
+            Assert.Equal(999.99m, result.Total);
+            Assert.Equal(13, scenario.StockOf(scenario.Cola).Quantity);
+        }
+
+        [Fact]
+        public void Create_RepetidoConCostoTotalYUnitarioEquivalentes_SumaLasCantidades()
+        {
+            TestScenario scenario = new();
+            PurchaseRequest request = new()
+            {
+                Items =
+                {
+                    new PurchaseItemRequest { ProductId = scenario.Cola.Id, Quantity = 2, UnitCost = 600m },
+                    new PurchaseItemRequest { ProductId = scenario.Cola.Id, Quantity = 3, TotalCost = 1800m }
+                }
+            };
+
+            PurchaseResponse result = scenario.PurchaseService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, request);
+
+            Assert.Equal(5, result.Items.Single().Quantity);
+            Assert.Equal(600m, result.Items.Single().UnitCost);
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        public void Create_SinCostoOConAmbos_LanzaValidacionYNoModificaStock(bool withUnitCost, bool withTotalCost)
+        {
+            TestScenario scenario = new();
+            PurchaseRequest request = new()
+            {
+                Items =
+                {
+                    new PurchaseItemRequest
+                    {
+                        ProductId = scenario.Cola.Id,
+                        Quantity = 3,
+                        UnitCost = withUnitCost ? 600m : null,
+                        TotalCost = withTotalCost ? 1800m : null
+                    }
+                }
+            };
+
+            Assert.Throws<AppValidationException>(() =>
+                scenario.PurchaseService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, request));
+            Assert.Equal(10, scenario.StockOf(scenario.Cola).Quantity);
+            Assert.Empty(scenario.Purchases.Purchases);
+        }
     }
 }

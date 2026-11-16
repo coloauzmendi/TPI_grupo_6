@@ -77,5 +77,9 @@ namespace Application.Models
         // Composición de las ventas de esos mismos 12 meses, por producto
         public List<BreakdownRowResponse> Breakdown { get; set; } = new();
         public List<BranchClosingResponse> Branches { get; set; } = new();
+        // Ventas del mes menos el costo de la última compra de cada producto
+        public decimal EstimatedProfit { get; set; }
+        // Productos vendidos en el mes sin ninguna compra registrada: no entran en la ganancia estimada
+        public int ProductsWithoutCost { get; set; }
     }
 }

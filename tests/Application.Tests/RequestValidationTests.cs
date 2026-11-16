@@ -155,5 +155,13 @@ namespace Application.Tests
 
             Assert.Contains(Validate(request), r => r.MemberNames.Contains(nameof(CompanyRequest.Name)));
         }
+
+        [Fact]
+        public void BranchStockCreateRequest_CostoTotalFueraDeRango_EsInvalido()
+        {
+            BranchStockCreateRequest request = new() { ProductId = Guid.NewGuid(), Quantity = 1, TotalCost = 10_000_000_000m };
+
+            Assert.Contains(Validate(request), r => r.MemberNames.Contains(nameof(BranchStockCreateRequest.TotalCost)));
+        }
     }
 }

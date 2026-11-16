@@ -17,7 +17,7 @@ namespace Application.Tests.Fakes
         public FakeProductRepository Products { get; } = new();
         public FakeBranchStockRepository Stocks { get; } = new();
         public FakeSaleRepository Sales { get; } = new();
-        public FakePurchaseRepository Purchases { get; } = new();
+        public FakePurchaseRepository Purchases { get; }
 
         public Company Company { get; }
         public Branch Branch { get; }
@@ -27,6 +27,8 @@ namespace Application.Tests.Fakes
 
         public TestScenario()
         {
+            Purchases = new FakePurchaseRepository(Stocks);
+
             User owner = Users.Create(new User { Cuit = OwnerCuit, FirstName = "Ana", LastName = "Perez", Role = UserRole.Owner });
             Users.Create(new User { Cuit = OutsiderCuit, FirstName = "Juan", LastName = "Gomez", Role = UserRole.Owner });
 
@@ -46,7 +48,8 @@ namespace Application.Tests.Fakes
         public IPriceService PriceService => new PriceService(Products, Stocks, Access);
         public ISaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
         public IPurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
-        public IStockService StockService => new StockService(Stocks, Products, Access);
+        public IReportService ReportService => new ReportService(Sales, Stocks, Products, Purchases, Access, new FakeInflationService());
+        public IStockService StockService => new StockService(Stocks, Products, Purchases, Access);
         public IBranchService BranchService => new BranchService(Branches, Users, Access);
         public ICompanyService CompanyService => new CompanyService(Companies, Users, Branches, BranchService, Access);
         public IProductService ProductService => new ProductService(Products, Stocks, Access);

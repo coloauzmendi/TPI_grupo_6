@@ -28,6 +28,8 @@ namespace Application.Services
         {
             _accessService.EnsureBranchAccess(cuit, branchId);
             ValidateLines(request.Items);
+            Dictionary<PurchaseItemRequest, decimal> unitCosts = request.Items
+                .ToDictionary(i => i, i => UnitCostCalculator.Resolve(i.UnitCost, i.TotalCost, i.Quantity));
 
             Dictionary<Guid, Product> products = _productRepository.GetAll().ToDictionary(p => p.Id);
             Purchase purchase = new Purchase
@@ -44,7 +46,7 @@ namespace Application.Services
             // Si el mismo producto viene repetido con el mismo costo se suman las cantidades
             foreach (var group in request.Items.GroupBy(i => i.ProductId))
             {
-                PurchaseItemRequest first = group.First();
+                decimal unitCost = unitCosts[group.First()];
                 long quantity = group.Sum(i => (long)i.Quantity);
 
                 BranchStock? stock = _stockRepository.GetById(branchId, group.Key);
@@ -53,7 +55,7 @@ namespace Application.Services
                     throw new AppValidationException("El producto no está dado de alta en esta sucursal.");
                 }
 
-                if (group.Any(i => i.UnitCost != first.UnitCost))
+                if (group.Any(i => unitCosts[i] != unitCost))
                 {
                     throw new AppValidationException($"{product.Name} viene repetido con costos distintos.");
                 }
@@ -69,7 +71,7 @@ namespace Application.Services
                     PurchaseId = purchase.Id,
                     ProductId = group.Key,
                     Quantity = (int)quantity,
-                    UnitCost = first.UnitCost
+                    UnitCost = unitCost
                 });
             }
 
@@ -100,11 +102,6 @@ namespace Application.Services
             if (items.Any(i => i.Quantity <= 0))
             {
                 throw new AppValidationException("La cantidad de cada producto debe ser mayor a 0.");
-            }
-
-            if (items.Any(i => i.UnitCost <= 0))
-            {
-                throw new AppValidationException("El costo unitario de cada producto debe ser mayor a 0.");
             }
         }
     }

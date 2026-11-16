@@ -1,4 +1,5 @@
 using Application.Models;
+using Application.Services;
 using Application.Tests.Fakes;
 using Domain.Entities;
 using Domain.Enums;
@@ -73,7 +74,7 @@ namespace Application.Tests
         {
             TestScenario scenario = new();
             scenario.StockService.Delete(TestScenario.OwnerCuit, scenario.Branch.Id, scenario.Hammer.Id);
-            BranchStockCreateRequest stock = new() { ProductId = scenario.Hammer.Id, Quantity = 7, MinimumStock = 2 };
+            BranchStockCreateRequest stock = new() { ProductId = scenario.Hammer.Id, Quantity = 7, MinimumStock = 2, UnitCost = 5000m };
 
             BranchStockResponse result = scenario.StockService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, stock);
 
@@ -143,6 +144,76 @@ namespace Application.Tests
             List<StockItemResponse> items = scenario.StockService.GetItems(TestScenario.OwnerCuit, scenario.Branch.Id);
 
             Assert.Equal(new[] { "Gaseosa", "Martillo" }, items.Select(i => i.Name));
+        }
+
+        [Fact]
+        public void Create_ConCostoTotal_DaDeAltaElStockYRegistraLaCompraConElCostoUnitario()
+        {
+            TestScenario scenario = new();
+            Product water = AddProductWithoutStock(scenario);
+            BranchStockCreateRequest stock = new() { ProductId = water.Id, Quantity = 3, MinimumStock = 1, TotalCost = 1000m };
+
+            scenario.StockService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, stock);
+
+            Assert.Equal(3, scenario.StockOf(water).Quantity);
+            Purchase purchase = scenario.Purchases.Purchases.Single();
+            Assert.Equal(StockService.InitialLoadSupplier, purchase.Supplier);
+            Assert.Equal(scenario.Branch.Id, purchase.BranchId);
+            Assert.Equal(TestScenario.OwnerCuit, purchase.UserCuit);
+            PurchaseDetail detail = purchase.Details.Single();
+            Assert.Equal(water.Id, detail.ProductId);
+            Assert.Equal(3, detail.Quantity);
+            Assert.Equal(333.33m, detail.UnitCost);
+            Assert.Equal(999.99m, purchase.Total);
+        }
+
+        [Fact]
+        public void Create_Reactivacion_RegistraLaCompraConElCostoUnitario()
+        {
+            TestScenario scenario = new();
+            scenario.StockService.Delete(TestScenario.OwnerCuit, scenario.Branch.Id, scenario.Hammer.Id);
+            BranchStockCreateRequest stock = new() { ProductId = scenario.Hammer.Id, Quantity = 4, MinimumStock = 1, UnitCost = 5000m };
+
+            scenario.StockService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, stock);
+
+            PurchaseDetail detail = scenario.Purchases.Purchases.Single().Details.Single();
+            Assert.Equal(5000m, detail.UnitCost);
+            Assert.Equal(4, detail.Quantity);
+            Assert.Equal(20000m, scenario.Purchases.Purchases.Single().Total);
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        public void Create_SinCostoOConAmbos_LanzaValidacionYNoCargaNada(bool withUnitCost, bool withTotalCost)
+        {
+            TestScenario scenario = new();
+            Product water = AddProductWithoutStock(scenario);
+            BranchStockCreateRequest stock = new()
+            {
+                ProductId = water.Id,
+                Quantity = 3,
+                UnitCost = withUnitCost ? 100m : null,
+                TotalCost = withTotalCost ? 300m : null
+            };
+
+            Assert.Throws<AppValidationException>(() => scenario.StockService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, stock));
+            Assert.Null(scenario.Stocks.GetById(scenario.Branch.Id, water.Id));
+            Assert.Empty(scenario.Purchases.Purchases);
+        }
+
+        private static Product AddProductWithoutStock(TestScenario scenario)
+        {
+            return scenario.Products.Create(new Product
+            {
+                Id = Guid.NewGuid(),
+                Name = "Agua",
+                Brand = "Generica",
+                Category = "Bebidas",
+                Industry = Industry.Kiosk,
+                Price = 700m,
+                CompanyId = scenario.Company.Id
+            });
         }
     }
 }

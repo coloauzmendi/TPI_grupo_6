@@ -9,9 +9,14 @@ namespace Application.Models
         [Range(1, ValidationLimits.MaxQuantity, ErrorMessage = "La cantidad de cada producto debe estar entre 1 y 100.000.")]
         public int Quantity { get; set; }
 
+        // Se indica el costo por unidad o el total de la línea, uno de los dos
         [Range(typeof(decimal), ValidationLimits.MinAmountText, ValidationLimits.MaxAmountText, ParseLimitsInInvariantCulture = true,
             ErrorMessage = "El costo unitario debe estar entre 0,01 y 99.999.999,99.")]
-        public decimal UnitCost { get; set; }
+        public decimal? UnitCost { get; set; }
+
+        [Range(typeof(decimal), ValidationLimits.MinAmountText, ValidationLimits.MaxTotalAmountText, ParseLimitsInInvariantCulture = true,
+            ErrorMessage = "El costo total debe estar entre 0,01 y 9.999.999.999,99.")]
+        public decimal? TotalCost { get; set; }
     }
 
     public class PurchaseRequest

@@ -97,23 +97,50 @@ namespace Application.Tests.Fakes
             return newSale;
         }
 
+        public Sale? GetById(Guid branchId, Guid saleId) =>
+            Sales.FirstOrDefault(s => s.Id == saleId && s.BranchId == branchId);
+
+        public void Cancel(Sale sale, List<BranchStock> restoredStocks)
+        {
+        }
+
         public List<Sale> GetByBranches(List<Guid> branchIds, DateTime from, DateTime to) =>
-            Sales.Where(s => branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to).ToList();
+            Sales.Where(s => !s.IsCancelled && branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to).ToList();
 
         public List<Sale> GetByUser(string userCuit, DateTime from, DateTime to) =>
-            Sales.Where(s => s.UserCuit == userCuit && s.Date >= from && s.Date < to).ToList();
+            Sales.Where(s => !s.IsCancelled && s.UserCuit == userCuit && s.Date >= from && s.Date < to).ToList();
     }
 
     public class FakePurchaseRepository : IPurchaseRepository
     {
+        private readonly FakeBranchStockRepository _stocks;
+
+        public FakePurchaseRepository(FakeBranchStockRepository stocks)
+        {
+            _stocks = stocks;
+        }
+
         public List<Purchase> Purchases { get; } = new();
 
         public Purchase Create(Purchase newPurchase, List<BranchStock> updatedStocks)
         {
             newPurchase.Number = Purchases.Count + 1;
             Purchases.Add(newPurchase);
+
+            foreach (BranchStock stock in updatedStocks.Where(s => _stocks.GetById(s.BranchId, s.ProductId) is null))
+            {
+                _stocks.Create(stock);
+            }
+
             return newPurchase;
         }
+
+        public Dictionary<Guid, decimal> GetLatestUnitCosts(List<Guid> branchIds) =>
+            Purchases
+                .Where(p => branchIds.Contains(p.BranchId))
+                .SelectMany(p => p.Details, (p, d) => new { d.ProductId, p.Date, p.Number, d.UnitCost })
+                .GroupBy(d => d.ProductId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(d => d.Date).ThenByDescending(d => d.Number).First().UnitCost);
     }
 
     public class FakePasswordHashService : IPasswordHashService

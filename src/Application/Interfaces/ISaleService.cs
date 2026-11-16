@@ -5,5 +5,6 @@ namespace Application.Interfaces
     public interface ISaleService
     {
         SaleResultResponse Create(string cuit, Guid branchId, SaleRequest request);
+        void Cancel(string cuit, Guid branchId, Guid saleId);
     }
 }

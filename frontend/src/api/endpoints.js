@@ -31,6 +31,7 @@ export const api = {
 
   // Ventas y compras
   createSale: (branchId, items) => request('POST', `/api/branch/${branchId}/sales`, { items }),
+  cancelSale: (branchId, saleId) => request('DELETE', `/api/branch/${branchId}/sales/${saleId}`),
   createPurchase: (branchId, data) => request('POST', `/api/branch/${branchId}/purchases`, data),
 
   // Empresas y sucursales

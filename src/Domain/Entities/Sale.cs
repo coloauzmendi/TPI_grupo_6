@@ -16,6 +16,9 @@
 
         public decimal Total { get; set; }
 
+        // Una venta anulada conserva su número y deja de contar en los reportes
+        public bool IsCancelled { get; set; }
+
         public List<SaleDetail> Details { get; set; } = new();
     }
 }

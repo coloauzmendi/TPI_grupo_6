@@ -11,17 +11,23 @@ namespace Application.Services
         // Tope del stock de un producto en una sucursal
         public const int MaxStock = 1_000_000;
 
+        // Proveedor con el que queda registrada la compra del alta de stock
+        public const string InitialLoadSupplier = "Carga inicial";
+
         private readonly IBranchStockRepository _stockRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IPurchaseRepository _purchaseRepository;
         private readonly IAccessService _accessService;
 
         public StockService(
             IBranchStockRepository stockRepository,
             IProductRepository productRepository,
+            IPurchaseRepository purchaseRepository,
             IAccessService accessService)
         {
             _stockRepository = stockRepository;
             _productRepository = productRepository;
+            _purchaseRepository = purchaseRepository;
             _accessService = accessService;
         }
 
@@ -64,7 +70,7 @@ namespace Application.Services
             return ResponseMapper.ToResponse(GetActive(branchId, productId));
         }
 
-        // Si el producto estaba dado de baja en la sucursal, se reactiva
+        // Si el producto estaba dado de baja en la sucursal, se reactiva. La carga queda registrada como una compra con su costo.
         public BranchStockResponse Create(string cuit, Guid branchId, BranchStockCreateRequest request)
         {
             Branch branch = _accessService.EnsureBranchAccess(cuit, branchId);
@@ -87,26 +93,33 @@ namespace Application.Services
             }
 
             EnsureMaxStock(request.Quantity);
+            decimal unitCost = UnitCostCalculator.Resolve(request.UnitCost, request.TotalCost, request.Quantity);
 
-            if (existing is null)
+            BranchStock stock = existing ?? new BranchStock { BranchId = branchId, ProductId = request.ProductId };
+            stock.Quantity = request.Quantity;
+            stock.MinimumStock = request.MinimumStock;
+            stock.IsActive = true;
+
+            Purchase purchase = new Purchase
             {
-                BranchStock created = _stockRepository.Create(new BranchStock
-                {
-                    BranchId = branchId,
-                    ProductId = request.ProductId,
-                    Quantity = request.Quantity,
-                    MinimumStock = request.MinimumStock
-                });
+                Id = Guid.NewGuid(),
+                BranchId = branchId,
+                UserCuit = cuit,
+                Date = DateTime.Now,
+                Supplier = InitialLoadSupplier,
+                Total = request.Quantity * unitCost
+            };
+            purchase.Details.Add(new PurchaseDetail
+            {
+                PurchaseId = purchase.Id,
+                ProductId = request.ProductId,
+                Quantity = request.Quantity,
+                UnitCost = unitCost
+            });
 
-                return ResponseMapper.ToResponse(created);
-            }
+            _purchaseRepository.Create(purchase, new List<BranchStock> { stock });
 
-            existing.Quantity = request.Quantity;
-            existing.MinimumStock = request.MinimumStock;
-            existing.IsActive = true;
-            _stockRepository.Update(existing);
-
-            return ResponseMapper.ToResponse(existing);
+            return ResponseMapper.ToResponse(stock);
         }
 
         public void Update(string cuit, Guid branchId, Guid productId, BranchStockUpdateRequest request)

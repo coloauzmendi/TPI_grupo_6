@@ -7,7 +7,7 @@ import { Icon } from './ui'
 import { branchLabel, longDate, timeShort } from '../utils/format'
 
 const OWNER_NAV = [
-  ['/', 'home', 'Inicio'], ['/stock', 'inventory_2', 'Stock'], ['/compras', 'local_shipping', 'Registrar Stock'],
+  ['/', 'home', 'Inicio'], ['/ventas', 'point_of_sale', 'Registrar venta'], ['/stock', 'inventory_2', 'Stock'], ['/compras', 'local_shipping', 'Registrar Stock'],
   ['/precios', 'sell', 'Precios'], ['/ranking', 'leaderboard', 'Ranking de ventas'],
   ['/cierre', 'calendar_month', 'Cierre mensual'], ['/empresas', 'store', 'Empresas y sucursales'], ['/empleados', 'group', 'Empleados'],
 ]

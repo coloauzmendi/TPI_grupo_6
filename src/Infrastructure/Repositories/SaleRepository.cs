@@ -25,11 +25,25 @@ namespace Infrastructure.Repositories
             return newSale;
         }
 
+        public Sale? GetById(Guid branchId, Guid saleId)
+        {
+            return _context.Sales
+                .Include(s => s.Details)
+                .FirstOrDefault(s => s.Id == saleId && s.BranchId == branchId);
+        }
+
+        public void Cancel(Sale sale, List<BranchStock> restoredStocks)
+        {
+            _context.Sales.Update(sale);
+            _context.BranchStocks.UpdateRange(restoredStocks);
+            _context.SaveChanges(); // una sola transacción: anulación + stock
+        }
+
         public List<Sale> GetByBranches(List<Guid> branchIds, DateTime from, DateTime to)
         {
             return _context.Sales
                 .Include(s => s.Details)
-                .Where(s => branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to)
+                .Where(s => !s.IsCancelled && branchIds.Contains(s.BranchId) && s.Date >= from && s.Date < to)
                 .OrderBy(s => s.Date)
                 .ToList();
         }
@@ -38,7 +52,7 @@ namespace Infrastructure.Repositories
         {
             return _context.Sales
                 .Include(s => s.Details)
-                .Where(s => s.UserCuit == userCuit && s.Date >= from && s.Date < to)
+                .Where(s => !s.IsCancelled && s.UserCuit == userCuit && s.Date >= from && s.Date < to)
                 .OrderBy(s => s.Date)
                 .ToList();
         }

@@ -1,6 +1,7 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories
 {
@@ -18,10 +19,40 @@ namespace Infrastructure.Repositories
             newPurchase.Number = (_context.Purchases.Max(p => (int?)p.Number) ?? 0) + 1;
 
             _context.Purchases.Add(newPurchase);
-            _context.BranchStocks.UpdateRange(updatedStocks);
+
+            // El stock que se da de alta en la sucursal todavía no existe: se inserta en lugar de actualizarse
+            foreach (BranchStock stock in updatedStocks)
+            {
+                bool exists = _context.Entry(stock).State != EntityState.Detached
+                    || _context.BranchStocks.Any(s => s.BranchId == stock.BranchId && s.ProductId == stock.ProductId);
+
+                if (exists)
+                {
+                    _context.BranchStocks.Update(stock);
+                }
+                else
+                {
+                    _context.BranchStocks.Add(stock);
+                }
+            }
+
             _context.SaveChanges(); // una sola transacción: compra + stock
 
             return newPurchase;
+        }
+
+        public Dictionary<Guid, decimal> GetLatestUnitCosts(List<Guid> branchIds)
+        {
+            var details = _context.Purchases
+                .Where(p => branchIds.Contains(p.BranchId))
+                .SelectMany(p => p.Details, (p, d) => new { d.ProductId, p.Date, p.Number, d.UnitCost })
+                .ToList();
+
+            return details
+                .GroupBy(d => d.ProductId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(d => d.Date).ThenByDescending(d => d.Number).First().UnitCost);
         }
     }
 }

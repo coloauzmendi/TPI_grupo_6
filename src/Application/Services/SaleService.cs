@@ -1,6 +1,7 @@
 ﻿using Application.Interfaces;
 using Application.Models;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Exceptions;
 
 namespace Application.Services
@@ -82,6 +83,43 @@ namespace Application.Services
                 Sale = SaleMapper.ToResponse(sale, products),
                 Alerts = alerts
             };
+        }
+
+        public void Cancel(string cuit, Guid branchId, Guid saleId)
+        {
+            _accessService.EnsureBranchAccess(cuit, branchId);
+            User user = _accessService.GetUser(cuit);
+
+            Sale? sale = _saleRepository.GetById(branchId, saleId);
+            if (sale is null)
+            {
+                throw new NotFoundException("La venta no existe en esta sucursal.");
+            }
+
+            if (sale.IsCancelled)
+            {
+                throw new AppValidationException("La venta ya está anulada.");
+            }
+
+            if (user.Role == UserRole.Employee && sale.UserCuit != cuit)
+            {
+                throw new NotAllowedException("Solo podés anular las ventas que registraste vos.");
+            }
+
+            // El stock vuelve aunque el producto esté dado de baja en la sucursal
+            List<BranchStock> restoredStocks = new();
+            foreach (SaleDetail detail in sale.Details)
+            {
+                BranchStock? stock = _stockRepository.GetById(branchId, detail.ProductId);
+                if (stock is not null)
+                {
+                    stock.Quantity += detail.Quantity;
+                    restoredStocks.Add(stock);
+                }
+            }
+
+            sale.IsCancelled = true;
+            _saleRepository.Cancel(sale, restoredStocks);
         }
 
         private static void ValidateLines(List<SaleItemRequest> items)

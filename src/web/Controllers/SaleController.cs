@@ -7,7 +7,7 @@ using web.Extensions;
 namespace web.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Employee")]
+[Authorize(Roles = "Owner,Employee")]
 [Route("api/branch/{branchId}/sales")]
 public class SaleController : ControllerBase
 {
@@ -23,5 +23,13 @@ public class SaleController : ControllerBase
     public ActionResult<SaleResultResponse> Create(Guid branchId, SaleRequest request)
     {
         return StatusCode(StatusCodes.Status201Created, _saleService.Create(User.GetCuit(), branchId, request));
+    }
+
+    // Anula la venta y devuelve el stock; el empleado solo puede anular las suyas
+    [HttpDelete("{saleId}")]
+    public IActionResult Cancel(Guid branchId, Guid saleId)
+    {
+        _saleService.Cancel(User.GetCuit(), branchId, saleId);
+        return NoContent();
     }
 }
