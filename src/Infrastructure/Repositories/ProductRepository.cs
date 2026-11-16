@@ -15,12 +15,18 @@ namespace Infraestructure.Repositories
 
         public List<Product> GetAll()
         {
+            return _context.Products.Where(x => x.IsActive).ToList();
+        }
+
+        // Incluye los dados de baja para resolver nombres en ventas y compras anteriores
+        public List<Product> GetAllIncludingInactive()
+        {
             return _context.Products.ToList();
         }
 
         public Product? GetById(Guid id)
         {
-            return _context.Products.FirstOrDefault(x => x.Id == id);
+            return _context.Products.FirstOrDefault(x => x.Id == id && x.IsActive);
         }
 
         public Product Create(Product newProduct)
@@ -44,10 +50,14 @@ namespace Infraestructure.Repositories
             _context.SaveChanges();
         }
 
-        public void Delete(Product productToDelete)
+        public void Delete(Product productToDelete, List<BranchStock> stocksToDelete)
         {
-            _context.Products.Remove(productToDelete);
-            _context.SaveChanges();
+            productToDelete.IsActive = false;
+            stocksToDelete.ForEach(s => s.IsActive = false);
+
+            _context.Products.Update(productToDelete);
+            _context.BranchStocks.UpdateRange(stocksToDelete);
+            _context.SaveChanges(); // una sola transacción: producto + stock
         }
     }
 }

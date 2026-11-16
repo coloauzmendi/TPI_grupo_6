@@ -50,15 +50,7 @@ namespace Application.Services
             Dictionary<Guid, string> companyNames = _accessService.GetCompanies(cuit).ToDictionary(c => c.Id, c => c.Name);
 
             return _accessService.GetBranches(cuit)
-                .Select(b => new BranchResponse
-                {
-                    Id = b.Id,
-                    Locality = b.Locality,
-                    Address = b.Address,
-                    Industry = b.Industry,
-                    CompanyId = b.CompanyId,
-                    CompanyName = companyNames.GetValueOrDefault(b.CompanyId, string.Empty)
-                })
+                .Select(b => ResponseMapper.ToResponse(b, companyNames.GetValueOrDefault(b.CompanyId, string.Empty)))
                 .ToList();
         }
 

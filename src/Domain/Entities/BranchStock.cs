@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace Domain.Entities
+﻿namespace Domain.Entities
 {
     public class BranchStock
     {
@@ -13,7 +11,6 @@ namespace Domain.Entities
         public int MinimumStock { get; set; }
 
         // Baja lógica: el producto deja de estar activo en la sucursal
-        [JsonIgnore]
         public bool IsActive { get; set; } = true;
     }
 }

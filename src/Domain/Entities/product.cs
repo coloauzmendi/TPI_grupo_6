@@ -15,5 +15,8 @@ namespace Domain.Entities
         public decimal Price { get; set; }
 
         public Industry Industry { get; set; }
+
+        // Baja lógica
+        public bool IsActive { get; set; } = true;
     }
 }

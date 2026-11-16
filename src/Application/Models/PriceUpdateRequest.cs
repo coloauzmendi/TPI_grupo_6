@@ -1,4 +1,5 @@
-﻿using Domain.Enums;
+﻿using System.ComponentModel.DataAnnotations;
+using Domain.Enums;
 
 namespace Application.Models
 {
@@ -9,8 +10,11 @@ namespace Application.Models
     {
         public PriceMode Mode { get; set; }
 
+        [StringLength(50, ErrorMessage = "El destino no puede superar los 50 caracteres.")]
         public string? Target { get; set; }
 
+        [Range(typeof(decimal), "-99", ValidationLimits.MaxAmountText, ParseLimitsInInvariantCulture = true,
+            ErrorMessage = "El valor debe estar entre -99 y 99.999.999,99.")]
         public decimal Value { get; set; }
     }
 }

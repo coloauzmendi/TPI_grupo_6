@@ -11,20 +11,37 @@ namespace Application.Services
         private readonly ICompanyRepository _companyRepository;
         private readonly IUserRepository _userRepository;
         private readonly IBranchRepository _branchRepository;
+        private readonly BranchService _branchService;
+        private readonly AccessService _accessService;
 
         public CompanyService(
             ICompanyRepository companyRepository,
             IUserRepository userRepository,
-            IBranchRepository branchRepository)
+            IBranchRepository branchRepository,
+            BranchService branchService,
+            AccessService accessService)
         {
             _companyRepository = companyRepository;
             _userRepository = userRepository;
             _branchRepository = branchRepository;
+            _branchService = branchService;
+            _accessService = accessService;
         }
 
         public List<Company> GetAll()
         {
             return _companyRepository.GetAll();
+        }
+
+        // Solo las empresas de las que el usuario es dueño
+        public List<CompanyResponse> GetByOwner(string cuit)
+        {
+            return _accessService.GetCompanies(cuit).Select(ResponseMapper.ToResponse).ToList();
+        }
+
+        public CompanyResponse GetByOwner(string cuit, Guid id)
+        {
+            return ResponseMapper.ToResponse(_accessService.EnsureCompanyOwner(cuit, id));
         }
 
         public Company GetById(Guid id)
@@ -39,31 +56,22 @@ namespace Application.Services
         }
 
         // El usuario que crea la empresa queda como su dueño
-        public Company Create(CompanyRequest request, string creatorCuit)
+        public CompanyResponse Create(CompanyRequest request, string creatorCuit)
         {
-            if (string.IsNullOrWhiteSpace(request.Name))
-            {
-                throw new AppValidationException("El nombre de la empresa es obligatorio.");
-            }
-
             Company newCompany = new Company
             {
+                Id = Guid.NewGuid(),
                 Name = request.Name
             };
 
             Company created = _companyRepository.Create(newCompany);
             AddOwner(created.Id, creatorCuit);
 
-            return created;
+            return ResponseMapper.ToResponse(created);
         }
 
         public void Update(Guid id, CompanyRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Name))
-            {
-                throw new AppValidationException("El nombre de la empresa es obligatorio.");
-            }
-
             Company company = GetById(id);
             company.Name = request.Name;
 
@@ -77,23 +85,18 @@ namespace Application.Services
 
             foreach (Branch branch in _branchRepository.GetByCompany(id))
             {
-                foreach (User employee in _userRepository.GetByBranch(branch.Id))
-                {
-                    _userRepository.Delete(employee);
-                }
-
-                _branchRepository.Delete(branch);
+                _branchService.Deactivate(branch);
             }
 
             _companyRepository.Delete(company);
         }
         // Dueños de la empresa
 
-        public List<User> GetOwners(Guid companyId)
+        public List<UserResponse> GetOwners(Guid companyId)
         {
             GetById(companyId);
 
-            return _companyRepository.GetOwners(companyId);
+            return _companyRepository.GetOwners(companyId).Select(ResponseMapper.ToResponse).ToList();
         }
 
         public void AddOwner(Guid companyId, string cuit)
@@ -117,6 +120,12 @@ namespace Application.Services
         public void RemoveOwner(Guid companyId, string cuit)
         {
             GetById(companyId);
+
+            List<User> owners = _companyRepository.GetOwners(companyId);
+            if (owners.Any(o => o.Cuit == cuit) && owners.All(o => o.Cuit == cuit))
+            {
+                throw new AppValidationException("La empresa debe tener al menos un dueño activo.");
+            }
 
             _companyRepository.RemoveOwner(companyId, cuit);
         }

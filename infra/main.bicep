@@ -79,6 +79,10 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           value: 'false'
         }
         {
+          name: 'WEBSITE_TIME_ZONE'
+          value: 'America/Argentina/Buenos_Aires'
+        }
+        {
           name: 'ConnectionStrings__DefaultConnection'
           value: sqliteConnectionString
         }

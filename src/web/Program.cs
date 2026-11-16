@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -10,7 +9,6 @@ using Infraestructure.Repositories;
 using Infraestructure.Services;
 using Application.Interfaces;
 using Application.Services;
-using Domain.Entities;
 using web.Handlers;
 using static Infraestructure.Services.AuthenticationService;
 
@@ -18,9 +16,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-// Los enums (Role, Industry) viajan como texto en el JSON: "Owner", "Kiosk", etc.
+// Los enums (Role, Industry, PriceMode) viajan como texto en el JSON: "Owner", "Kiosk", etc. No se aceptan números.
 builder.Services.AddControllers()
-    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -127,13 +125,17 @@ builder.Services.AddScoped<IPurchaseRepository, PurchaseRepository>();
 builder.Services.AddScoped<CompanyService>();
 builder.Services.AddScoped<AccessService>();
 builder.Services.AddScoped<MeService>();
+builder.Services.AddScoped<BranchService>();
 builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<IInflationRateService, InflationRateService>();
 builder.Services.AddScoped<SaleService>();
 builder.Services.AddScoped<PurchaseService>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ICustomAuthenticationService, AuthenticationService>();
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IPasswordHashService, PasswordHashService>();
 
 // Manejo global de errores: toda excepción no capturada se devuelve como ProblemDetails
 builder.Services.AddExceptionHandler<AppExceptionHandler>();

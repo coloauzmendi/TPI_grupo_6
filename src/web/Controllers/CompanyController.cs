@@ -1,6 +1,5 @@
 ﻿using Application.Models;
 using Application.Services;
-using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -23,21 +22,21 @@ public class CompanyController : ControllerBase
 
     // Solo las empresas de las que el usuario es dueño
     [HttpGet]
-    public ActionResult<List<Company>> GetAll()
+    public ActionResult<List<CompanyResponse>> GetAll()
     {
-        return Ok(_accessService.GetCompanies(User.GetCuit()));
+        return Ok(_companyService.GetByOwner(User.GetCuit()));
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Company> GetById(Guid id)
+    public ActionResult<CompanyResponse> GetById(Guid id)
     {
-        return Ok(_accessService.EnsureCompanyOwner(User.GetCuit(), id));
+        return Ok(_companyService.GetByOwner(User.GetCuit(), id));
     }
 
     [HttpPost]
-    public ActionResult<Company> Create(CompanyRequest request)
+    public ActionResult<CompanyResponse> Create(CompanyRequest request)
     {
-        var created = _companyService.Create(request, User.GetCuit());
+        CompanyResponse created = _companyService.Create(request, User.GetCuit());
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -60,7 +59,7 @@ public class CompanyController : ControllerBase
     // Dueños de la empresa
 
     [HttpGet("{id}/owners")]
-    public ActionResult<List<Domain.Entities.User>> GetOwners(Guid id)
+    public ActionResult<List<UserResponse>> GetOwners(Guid id)
     {
         _accessService.EnsureCompanyOwner(User.GetCuit(), id);
         return Ok(_companyService.GetOwners(id));

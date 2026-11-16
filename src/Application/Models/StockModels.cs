@@ -1,7 +1,36 @@
-﻿using Domain.Enums;
+﻿using System.ComponentModel.DataAnnotations;
+using Domain.Enums;
 
 namespace Application.Models
 {
+    public class BranchStockCreateRequest
+    {
+        public Guid ProductId { get; set; }
+
+        [Range(1, ValidationLimits.MaxQuantity, ErrorMessage = "La cantidad debe estar entre 1 y 100.000.")]
+        public int Quantity { get; set; }
+
+        [Range(0, ValidationLimits.MaxQuantity, ErrorMessage = "El stock mínimo debe estar entre 0 y 100.000.")]
+        public int MinimumStock { get; set; }
+    }
+
+    public class BranchStockUpdateRequest
+    {
+        [Range(0, ValidationLimits.MaxQuantity, ErrorMessage = "La cantidad debe estar entre 0 y 100.000.")]
+        public int Quantity { get; set; }
+
+        [Range(0, ValidationLimits.MaxQuantity, ErrorMessage = "El stock mínimo debe estar entre 0 y 100.000.")]
+        public int MinimumStock { get; set; }
+    }
+
+    public class BranchStockResponse
+    {
+        public Guid BranchId { get; set; }
+        public Guid ProductId { get; set; }
+        public int Quantity { get; set; }
+        public int MinimumStock { get; set; }
+    }
+
     // Stock de una sucursal junto con los datos del producto
     public class StockItemResponse
     {
@@ -13,6 +42,7 @@ namespace Application.Models
         public decimal Price { get; set; }
         public int Quantity { get; set; }
         public int MinimumStock { get; set; }
+        public bool IsActive { get; set; }
     }
 
     public class StockAlertResponse

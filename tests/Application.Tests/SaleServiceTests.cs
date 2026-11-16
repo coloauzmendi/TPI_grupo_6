@@ -48,6 +48,25 @@ namespace Application.Tests
         }
 
         [Fact]
+        public void Create_LineaNegativaDelMismoProducto_LanzaValidacionYNoGuarda()
+        {
+            TestScenario scenario = new();
+            SaleRequest request = new()
+            {
+                Items =
+                {
+                    new SaleItemRequest { ProductId = scenario.Cola.Id, Quantity = 10 },
+                    new SaleItemRequest { ProductId = scenario.Cola.Id, Quantity = -5 }
+                }
+            };
+
+            Assert.Throws<AppValidationException>(() =>
+                scenario.SaleService.Create(TestScenario.OwnerCuit, scenario.Branch.Id, request));
+            Assert.Equal(10, scenario.StockOf(scenario.Cola).Quantity);
+            Assert.Empty(scenario.Sales.Sales);
+        }
+
+        [Fact]
         public void Create_SucursalAjena_LanzaNotAllowed()
         {
             TestScenario scenario = new();

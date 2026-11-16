@@ -18,6 +18,7 @@ namespace Application.Tests.Fakes
         public FakeSaleRepository Sales { get; } = new();
         public FakePurchaseRepository Purchases { get; } = new();
 
+        public Company Company { get; }
         public Branch Branch { get; }
         public Product Cola { get; }
         public Product Chips { get; }
@@ -28,11 +29,11 @@ namespace Application.Tests.Fakes
             User owner = Users.Create(new User { Cuit = OwnerCuit, FirstName = "Ana", LastName = "Perez", Role = UserRole.Owner });
             Users.Create(new User { Cuit = OutsiderCuit, FirstName = "Juan", LastName = "Gomez", Role = UserRole.Owner });
 
-            Company company = new Company { Id = Guid.NewGuid(), Name = "Kiosco Ana" };
-            company.Owners.Add(owner);
-            Companies.Create(company);
+            Company = new Company { Id = Guid.NewGuid(), Name = "Kiosco Ana" };
+            Company.Owners.Add(owner);
+            Companies.Create(Company);
 
-            Branch = Branches.Create(new Branch { Id = Guid.NewGuid(), CompanyId = company.Id, Locality = "Rosario", Industry = Industry.Kiosk });
+            Branch = Branches.Create(new Branch { Id = Guid.NewGuid(), CompanyId = Company.Id, Locality = "Rosario", Industry = Industry.Kiosk });
 
             Cola = AddProduct("Gaseosa", "Bebidas", Industry.Kiosk, 1000m, quantity: 10, minimum: 3);
             Chips = AddProduct("Papas fritas", "Snacks", Industry.Kiosk, 500m, quantity: 5, minimum: 2);
@@ -44,7 +45,11 @@ namespace Application.Tests.Fakes
         public PriceService PriceService => new PriceService(Products, Stocks, Access);
         public SaleService SaleService => new SaleService(Sales, Stocks, Products, Access);
         public PurchaseService PurchaseService => new PurchaseService(Purchases, Stocks, Products, Access);
-        public StockService StockService => new StockService(Stocks, Products);
+        public StockService StockService => new StockService(Stocks, Products, Access);
+        public BranchService BranchService => new BranchService(Branches, Users, Access);
+        public CompanyService CompanyService => new CompanyService(Companies, Users, Branches, BranchService, Access);
+        public ProductService ProductService => new ProductService(Products, Stocks);
+        public UserService UserService => new UserService(Users, Branches, new FakePasswordHashService(), Access);
 
         public BranchStock StockOf(Product product) => Stocks.GetById(Branch.Id, product.Id)!;
 

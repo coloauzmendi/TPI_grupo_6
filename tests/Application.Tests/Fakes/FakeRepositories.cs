@@ -1,4 +1,5 @@
 using Application.Interfaces;
+using Application.Models;
 using Domain.Entities;
 
 namespace Application.Tests.Fakes
@@ -40,7 +41,7 @@ namespace Application.Tests.Fakes
         public Company Create(Company newCompany) { Companies.Add(newCompany); return newCompany; }
         public void Update(Company updatedCompany) { }
         public void Delete(Company companyToDelete) => Companies.Remove(companyToDelete);
-        public List<User> GetOwners(Guid companyId) => GetById(companyId)?.Owners ?? new List<User>();
+        public List<User> GetOwners(Guid companyId) => GetById(companyId)?.Owners.Where(o => o.IsActive).ToList() ?? new List<User>();
         public void AddOwner(Guid companyId, User owner) => GetById(companyId)?.Owners.Add(owner);
         public void RemoveOwner(Guid companyId, string ownerCuit) =>
             GetById(companyId)?.Owners.RemoveAll(o => o.Cuit == ownerCuit);
@@ -51,12 +52,17 @@ namespace Application.Tests.Fakes
         public List<Product> Products { get; } = new();
         public int UpdateRangeCalls { get; private set; }
 
-        public List<Product> GetAll() => Products.ToList();
-        public Product? GetById(Guid id) => Products.FirstOrDefault(p => p.Id == id);
+        public List<Product> GetAll() => Products.Where(p => p.IsActive).ToList();
+        public List<Product> GetAllIncludingInactive() => Products.ToList();
+        public Product? GetById(Guid id) => Products.FirstOrDefault(p => p.Id == id && p.IsActive);
         public Product Create(Product newProduct) { Products.Add(newProduct); return newProduct; }
         public void Update(Product updatedProduct) { }
         public void UpdateRange(List<Product> updatedProducts) => UpdateRangeCalls++;
-        public void Delete(Product productToDelete) => Products.Remove(productToDelete);
+        public void Delete(Product productToDelete, List<BranchStock> stocksToDelete)
+        {
+            productToDelete.IsActive = false;
+            stocksToDelete.ForEach(s => s.IsActive = false);
+        }
     }
 
     public class FakeBranchStockRepository : IBranchStockRepository
@@ -64,6 +70,8 @@ namespace Application.Tests.Fakes
         public List<BranchStock> Stocks { get; } = new();
 
         public List<BranchStock> GetByBranch(Guid branchId) => Stocks.Where(s => s.BranchId == branchId && s.IsActive).ToList();
+        public List<BranchStock> GetByBranchIncludingInactive(Guid branchId) => Stocks.Where(s => s.BranchId == branchId).ToList();
+        public List<BranchStock> GetByProduct(Guid productId) => Stocks.Where(s => s.ProductId == productId && s.IsActive).ToList();
         public BranchStock? GetById(Guid branchId, Guid productId) =>
             Stocks.FirstOrDefault(s => s.BranchId == branchId && s.ProductId == productId);
         public BranchStock Create(BranchStock newStock) { Stocks.Add(newStock); return newStock; }
@@ -99,5 +107,18 @@ namespace Application.Tests.Fakes
             Purchases.Add(newPurchase);
             return newPurchase;
         }
+    }
+
+    public class FakePasswordHashService : IPasswordHashService
+    {
+        public string Hash(User user, string password) => $"hash:{password}";
+        public bool Verify(User user, string password) => user.PasswordHash == Hash(user, password);
+    }
+
+    public class FakeInflationService : IInflationService
+    {
+        public InflationSeries? Series { get; set; }
+
+        public Task<InflationSeries?> GetSeriesAsync(CancellationToken cancellationToken = default) => Task.FromResult(Series);
     }
 }

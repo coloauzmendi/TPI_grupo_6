@@ -39,7 +39,7 @@ export default function Employees() {
     if (!v.branchId) errors.branchId = 'Campo obligatorio'
     if (!editing) {
       if (!CUIT_RE.test(v.cuit.trim())) errors.cuit = 'Formato: 20-12345678-9'
-      if (v.password.length < 4) errors.password = 'Mínimo 4 caracteres'
+      if (v.password.length < 6) errors.password = 'Mínimo 6 caracteres'
     }
     if (Object.keys(errors).length) return setForm({ ...form, errors })
 

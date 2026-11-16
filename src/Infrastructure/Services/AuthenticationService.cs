@@ -5,7 +5,6 @@ using Application.Interfaces;
 using Application.Models;
 using Domain.Entities;
 using Domain.Exceptions;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -14,16 +13,16 @@ namespace Infraestructure.Services
     public class AuthenticationService : ICustomAuthenticationService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IPasswordHasher<User> _passwordHasher;
+        private readonly IPasswordHashService _passwordHashService;
         private readonly AuthenticationServiceOptions _options;
 
         public AuthenticationService(
             IUserRepository userRepository,
-            IPasswordHasher<User> passwordHasher,
+            IPasswordHashService passwordHashService,
             IOptions<AuthenticationServiceOptions> options)
         {
             _userRepository = userRepository;
-            _passwordHasher = passwordHasher;
+            _passwordHashService = passwordHashService;
             _options = options.Value;
         }
 
@@ -39,8 +38,7 @@ namespace Infraestructure.Services
             if (user is null || !user.IsActive || string.IsNullOrEmpty(user.PasswordHash))
                 return null;
 
-            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-            if (result == PasswordVerificationResult.Failed)
+            if (!_passwordHashService.Verify(user, request.Password))
                 return null;
 
             return user;

@@ -56,6 +56,48 @@ namespace Application.Tests
         }
 
         [Fact]
+        public void Update_PorcentajeMayorAMil_LanzaValidacion()
+        {
+            TestScenario scenario = new();
+
+            Assert.Throws<AppValidationException>(() => scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.All,
+                Value = 1001m
+            }));
+            Assert.Equal(0, scenario.Products.UpdateRangeCalls);
+        }
+
+        [Fact]
+        public void Update_IndividualEnCero_LanzaValidacion()
+        {
+            TestScenario scenario = new();
+
+            Assert.Throws<AppValidationException>(() => scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.Individual,
+                Target = scenario.Cola.Id.ToString(),
+                Value = 0m
+            }));
+            Assert.Equal(1000m, scenario.Cola.Price);
+        }
+
+        [Fact]
+        public void Update_PrecioResultanteEnCero_LanzaValidacionYNoCambia()
+        {
+            TestScenario scenario = new();
+            scenario.Chips.Price = 0.01m;
+
+            Assert.Throws<AppValidationException>(() => scenario.PriceService.Update(TestScenario.OwnerCuit, new PriceUpdateRequest
+            {
+                Mode = PriceMode.Category,
+                Target = "Snacks",
+                Value = -99m
+            }));
+            Assert.Equal(0, scenario.Products.UpdateRangeCalls);
+        }
+
+        [Fact]
         public void Update_UsuarioSinSucursales_LanzaValidacionPorqueNoHayProductos()
         {
             TestScenario scenario = new();

@@ -38,7 +38,7 @@ namespace Application.Services
                 ? _saleRepository.GetByBranches(_accessService.GetBranches(cuit).Select(b => b.Id).ToList(), today, today.AddDays(1))
                 : _saleRepository.GetByUser(cuit, today, today.AddDays(1));
 
-            Dictionary<Guid, Product> products = _productRepository.GetAll().ToDictionary(p => p.Id);
+            Dictionary<Guid, Product> products = _productRepository.GetAllIncludingInactive().ToDictionary(p => p.Id);
 
             return new TodayResponse
             {
@@ -55,7 +55,7 @@ namespace Application.Services
             DateTime from = new DateTime(year, month, 1);
             List<Sale> sales = _saleRepository.GetByBranches(branchIds, from, from.AddMonths(1));
 
-            Dictionary<Guid, Product> products = _productRepository.GetAll().ToDictionary(p => p.Id);
+            Dictionary<Guid, Product> products = _productRepository.GetAllIncludingInactive().ToDictionary(p => p.Id);
             Dictionary<Guid, (int Units, decimal Amount)> sold = sales
                 .SelectMany(s => s.Details)
                 .GroupBy(d => d.ProductId)
@@ -103,7 +103,7 @@ namespace Application.Services
             List<Sale> InMonth(DateTime m) => sales.Where(s => s.Date >= m && s.Date < m.AddMonths(1)).ToList();
             List<Sale> currentSales = InMonth(current);
 
-            Dictionary<Guid, Product> products = _productRepository.GetAll().ToDictionary(p => p.Id);
+            Dictionary<Guid, Product> products = _productRepository.GetAllIncludingInactive().ToDictionary(p => p.Id);
 
             List<MonthTotalResponse> months = Enumerable.Range(-11, 12)
                 .Select(i => current.AddMonths(i))
