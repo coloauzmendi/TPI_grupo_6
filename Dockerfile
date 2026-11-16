@@ -19,7 +19,8 @@ ENV ASPNETCORE_ENVIRONMENT=Production \
     PORT=8080 \
     TZ=America/Argentina/Buenos_Aires \
     ConnectionStrings__DefaultConnection="Data Source=/app/data/miWebAppDatabase.db" \
-    Seed__Enabled=true \n    App__Version=$APP_VERSION
+    Seed__Enabled=true \
+    App__Version=$APP_VERSION
 
 RUN mkdir -p /app/data && chown -R $APP_UID /app/data
 
