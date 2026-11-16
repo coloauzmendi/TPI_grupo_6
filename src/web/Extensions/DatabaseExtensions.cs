@@ -25,16 +25,14 @@ public static class DatabaseExtensions
     {
         string connectionString = app.Configuration.GetRequiredSetting(ConnectionStringKey);
 
-        // 1) SQLite crea el archivo pero no la carpeta: en Azure App Service Linux la base vive en /home/data,
-        //    que es el único almacenamiento que persiste entre reinicios y despliegues.
+        // 1) SQLite crea el archivo pero no la carpeta, así que se crea antes de abrir la conexión.
         string? databaseFolder = Path.GetDirectoryName(new SqliteConnectionStringBuilder(connectionString).DataSource);
         if (!string.IsNullOrEmpty(databaseFolder))
         {
             Directory.CreateDirectory(databaseFolder);
         }
 
-        // 2) El journal_mode se configura una sola vez, con una conexión aparte. Se usa DELETE y no WAL
-        //    porque /home en App Service es almacenamiento de red, donde WAL no es confiable.
+        // 2) El journal_mode se configura una sola vez, con una conexión aparte.
         using (var setupConnection = new SqliteConnection(connectionString))
         {
             setupConnection.Open();

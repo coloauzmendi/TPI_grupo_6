@@ -1,9 +1,4 @@
-# CI/CD de la Web API hacia Azure App Service (plan Linux F1, gratuito).
-# - Pull requests a main: solo build y test.
-# - Push a main: build y test, despliegue de la infraestructura (Bicep) y despliegue de la API.
-# La autenticacion a Azure es por OIDC (federated credentials): no se guardan contrasenas.
-
-name: Build, test y deploy
+name: CI/CD
 
 on:
   push:
@@ -11,24 +6,21 @@ on:
   pull_request:
     branches: [main]
 
-# Por defecto ningun job puede pedir tokens OIDC; solo los que se conectan a Azure
 permissions:
   contents: read
 
-# Evita que dos despliegues a main se ejecuten al mismo tiempo
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '22'
   SOLUTION: MiWebApp.slnx
-  WEB_PROJECT: src/web/web.csproj
-  ARTIFACT_NAME: webapi
 
 jobs:
-  build-test:
-    name: Build y test
+  api:
+    name: API - build y test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,123 +40,121 @@ jobs:
       - name: Test
         run: dotnet test ${{ env.SOLUTION }} --configuration Release --no-build --verbosity normal
 
-      # Compila el Bicep sin conectarse a Azure: detecta errores de sintaxis tambien en los pull requests
-      - name: Validar Bicep
-        run: az bicep build --file infra/main.bicep --stdout > /dev/null
+      - name: Build de la imagen Docker
+        run: docker build --tag tpi-api:ci .
 
-      - name: Publish
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: dotnet publish ${{ env.WEB_PROJECT }} --configuration Release --no-build --output ./publish
-
-      - name: Subir artefacto
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ./publish
-          retention-days: 7
-
-  infra:
-    name: Infraestructura (Bicep)
-    needs: build-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  frontend:
+    name: Frontend - lint y build
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    outputs:
-      webAppName: ${{ steps.bicep.outputs.webAppName }}
-      webAppUrl: ${{ steps.bicep.outputs.webAppUrl }}
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Login a Azure (OIDC)
-        uses: azure/login@v2
+      - name: Instalar Node
+        uses: actions/setup-node@v4
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Desplegar main.bicep
-        id: bicep
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
         env:
-          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-          LOCATION: ${{ vars.AZURE_LOCATION }}
-          WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
-          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: |
-          set -euo pipefail
+          VITE_API_URL: http://localhost:5015
+        run: npm run build
 
-          if [ -z "$RESOURCE_GROUP" ]; then
-            echo "Falta la variable AZURE_RESOURCE_GROUP." >&2
-            exit 1
-          fi
-          if [ ${#JWT_SECRET} -lt 32 ]; then
-            echo "El secreto JWT_SECRET falta o tiene menos de 32 caracteres." >&2
-            exit 1
-          fi
-
-          # Los parametros opcionales solo se envian si la variable esta definida;
-          # si no, Bicep usa sus valores por defecto
-          params=(jwtSecret="$JWT_SECRET")
-          [ -n "$LOCATION" ] && params+=(location="$LOCATION")
-          [ -n "$WEBAPP_NAME" ] && params+=(webAppName="$WEBAPP_NAME")
-          [ -n "$CORS_ALLOWED_ORIGINS" ] && params+=(corsAllowedOrigins="$CORS_ALLOWED_ORIGINS")
-
-          outputs=$(az deployment group create \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "webapi-${GITHUB_RUN_NUMBER}" \
-            --template-file infra/main.bicep \
-            --parameters "${params[@]}" \
-            --query properties.outputs \
-            --output json)
-
-          echo "webAppName=$(echo "$outputs" | jq -r .webAppName.value)" >> "$GITHUB_OUTPUT"
-          echo "webAppUrl=$(echo "$outputs" | jq -r .webAppUrl.value)" >> "$GITHUB_OUTPUT"
-
-  deploy:
+  deploy-api:
     name: Deploy de la API
-    needs: [build-test, infra]
+    needs: [api, frontend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      packages: write
     steps:
-      - name: Descargar artefacto
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ./publish
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Login a Azure (OIDC)
-        uses: azure/login@v2
+      - name: Login a GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Desplegar en App Service
-        uses: azure/webapps-deploy@v3
+      - name: Metadatos de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          app-name: ${{ needs.infra.outputs.webAppName }}
-          package: ./publish
+          images: ghcr.io/${{ github.repository }}/api
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
 
-      # Sin token la API debe responder 401: confirma que arranco y que aplico la configuracion.
-      # El plan F1 tiene arranque en frio, por eso se reintenta varias veces.
-      - name: Verificar que la API responde
+      - name: Build y push de la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ github.sha }}
+
+      - name: Solicitar el despliegue al hosting
         env:
-          WEBAPP_URL: ${{ needs.infra.outputs.webAppUrl }}
-        run: |
-          for attempt in $(seq 1 12); do
-            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$WEBAPP_URL/api/Product" || true)
-            echo "Intento $attempt: HTTP $status"
-            if [ "$status" = "401" ]; then
-              exit 0
-            fi
-            sleep 15
-          done
-          echo "La API no respondio como se esperaba en $WEBAPP_URL" >&2
-          exit 1
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: bash scripts/trigger-deploy.sh
+
+      - name: Smoke test de la API
+        env:
+          API_URL: ${{ vars.API_URL }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          SMOKE_CUIT: ${{ vars.SMOKE_CUIT }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+          EXPECTED_VERSION: ${{ github.sha }}
+        run: bash scripts/smoke-test-api.sh
+
+  deploy-frontend:
+    name: Deploy del frontend (Vercel)
+    needs: deploy-api
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Instalar Vercel CLI
+        run: npm install --global vercel
+
+      - name: Descargar configuración de Vercel
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Desplegar en Vercel
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      - name: Smoke test del frontend
+        env:
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: bash scripts/smoke-test-frontend.sh
