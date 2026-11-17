@@ -14,7 +14,7 @@ export const scopeParams = (scope) => {
 }
 
 // Selectores de alcance, mes y año compartidos por Ranking y Cierre mensual
-export function PeriodFilters({ value, onChange }) {
+export function PeriodFilters({ value, onChange, hideScope = false }) {
   const { branches } = useBranches()
   const [companies, setCompanies] = useState([])
   const year = new Date().getFullYear()
@@ -27,11 +27,13 @@ export function PeriodFilters({ value, onChange }) {
 
   return (
     <>
-      <select value={value.scope} onChange={set('scope')} style={{ ...selectStyle, minWidth: 260 }}>
-        <option value="all">Todas mis sucursales</option>
-        {companies.map((c) => <option key={c.id} value={`c:${c.id}`}>Empresa: {c.name}</option>)}
-        {branches.map((b) => <option key={b.id} value={`s:${b.id}`}>Sucursal: {branchLabel(b)}</option>)}
-      </select>
+      {!hideScope && (
+        <select value={value.scope} onChange={set('scope')} style={{ ...selectStyle, minWidth: 260 }}>
+          <option value="all">Todas mis sucursales</option>
+          {companies.map((c) => <option key={c.id} value={`c:${c.id}`}>Empresa: {c.name}</option>)}
+          {branches.map((b) => <option key={b.id} value={`s:${b.id}`}>Sucursal: {branchLabel(b)}</option>)}
+        </select>
+      )}
       <select value={value.month} onChange={set('month', Number)} style={selectStyle}>
         {MESES.map((m, i) => <option key={m} value={i + 1}>{cap(m)}</option>)}
       </select>

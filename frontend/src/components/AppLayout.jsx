@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useBranches } from '../context/BranchContext'
 import { useCart } from '../context/CartContext'
+import { useToast } from '../context/ToastContext'
 import { Icon } from './ui'
 import { branchLabel, longDate, timeShort } from '../utils/format'
 
@@ -26,17 +27,32 @@ export { Logo }
 
 export default function AppLayout() {
   const { me, isOwner, logout } = useAuth()
-  const { branches, active, setActive, alerts } = useBranches()
+  const { branches, active, setActive, activeAlerts, otherAlerts, allBranches, setAllBranches } = useBranches()
   const { cart, setCart } = useCart()
+  const toast = useToast()
+  const { pathname } = useLocation()
   const navigate = useNavigate()
   const [now, setNow] = useState(new Date())
+  const onCierre = pathname === '/cierre'
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 10000)
     return () => clearInterval(t)
   }, [])
 
-  const badges = { '/ventas': cart.length || null, '/stock': isOwner ? alerts.length || null : null }
+  // Al entrar a Stock se avisa del stock bajo en las demás sucursales (una vez por visita)
+  const warned = useRef(false)
+  useEffect(() => {
+    if (pathname !== '/stock') { warned.current = false; return }
+    if (!isOwner || warned.current || !otherAlerts.length) return
+    warned.current = true
+    const bySite = new Map()
+    otherAlerts.forEach((a) => bySite.set(a.branchId, (bySite.get(a.branchId) ?? 0) + 1))
+    const detail = [...bySite].map(([id, n]) => `${branchLabel(branches.find((b) => b.id === id))} (${n})`).join(', ')
+    toast(`Stock bajo en otras sucursales: ${detail}`, 'err', 6000)
+  }, [pathname, isOwner, otherAlerts, branches, toast])
+
+  const badges = { '/ventas': cart.length || null, '/stock': isOwner ? activeAlerts.length || null : null }
   const nav = isOwner ? OWNER_NAV : EMPLOYEE_NAV
 
   const doLogout = () => {
@@ -56,10 +72,15 @@ export default function AppLayout() {
           <Icon name="location_on" style={{ fontSize: 20, color: '#8b97b3' }} />
           {isOwner ? (
             <select
-              value={active?.id ?? ''}
-              onChange={(e) => setActive(e.target.value)}
+              value={onCierre && allBranches ? 'all' : active?.id ?? ''}
+              onChange={(e) => {
+                if (e.target.value === 'all') return setAllBranches(true)
+                setAllBranches(false)
+                setActive(e.target.value)
+              }}
               style={{ height: 38, maxWidth: 320, padding: '0 10px', borderRadius: 9, border: '1px solid #2b3754', background: '#1a2540', color: '#fff', fontSize: 14 }}
             >
+              {onCierre && <option value="all">Todas las sucursales</option>}
               {branches.map((b) => <option key={b.id} value={b.id}>{branchLabel(b)}</option>)}
             </select>
           ) : (
