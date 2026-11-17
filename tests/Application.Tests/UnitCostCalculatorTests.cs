@@ -8,7 +8,8 @@ namespace Application.Tests
         [Fact]
         public void Resolve_CostoUnitario_LoDevuelveTalCual()
         {
-            Assert.Equal(250.50m, UnitCostCalculator.Resolve(250.50m, null, 4));
+            // TEST ROTO A PROPÓSITO PARA LA DEMO
+            Assert.Equal(999m, UnitCostCalculator.Resolve(250.50m, null, 4));
         }
 
         [Theory]
