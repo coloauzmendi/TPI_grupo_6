@@ -6,10 +6,10 @@ export function ToastProvider({ children }) {
   const [toast, setToast] = useState(null)
   const timer = useRef(null)
 
-  const show = useCallback((text, kind = 'ok') => {
+  const show = useCallback((text, kind = 'ok', ms = 3200) => {
     clearTimeout(timer.current)
     setToast({ text, kind })
-    timer.current = setTimeout(() => setToast(null), 3200)
+    timer.current = setTimeout(() => setToast(null), ms)
   }, [])
 
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -35,5 +35,5 @@ export function ToastProvider({ children }) {
   )
 }
 
-// toast('mensaje') para éxito, toast('mensaje', 'err') para error
+// toast('mensaje') para éxito, toast('mensaje', 'err') para error; tercer parámetro opcional: duración en ms
 export const useToast = () => useContext(ToastContext)

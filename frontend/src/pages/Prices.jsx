@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/endpoints'
 import { useBranches } from '../context/BranchContext'
+import { InflationModal } from '../components/InflationModal'
 import { useToast } from '../context/ToastContext'
 import { C, Icon, PageHeader, errorBox, tableCard, thStyle } from '../components/ui'
 import { MESES, money, parseDecimal } from '../utils/format'
@@ -27,6 +28,7 @@ export default function Prices() {
   const [target, setTarget] = useState('')
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
+  const [inflationOpen, setInflationOpen] = useState(false)
   // Inflación del último mes publicado; si el servicio externo falla simplemente no se muestra
   const [inflation, setInflation] = useState(null)
   useEffect(() => {
@@ -95,12 +97,16 @@ export default function Prices() {
             <div style={{ fontSize: 24, fontWeight: 800, color: '#172033' }}>{inflation.percent.toFixed(2).replace('.', ',')}%</div>
           </div>
           <button
-            onClick={() => { setMode('All'); setTarget(''); setValue(String(inflation.percent).replace('.', ',')) }}
+            onClick={() => setInflationOpen(true)}
             style={{ height: 42, padding: '0 18px', border: `1px solid ${C.amber}`, borderRadius: 10, background: '#fff', color: '#172033', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
           >
-            Aplicar a todos los productos
+            Actualizar precios por inflación
           </button>
         </div>
+      )}
+
+      {inflationOpen && inflation && (
+        <InflationModal inflation={inflation} products={products} onClose={() => setInflationOpen(false)} onApplied={() => { load(); reloadAlerts() }} />
       )}
 
       <div style={{ background: '#fff', border: '1px solid #e6e9ef', borderRadius: 16, padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>

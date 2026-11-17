@@ -35,8 +35,15 @@ export function BranchProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, id)
   }, [])
 
+  // Alertas de la sucursal activa y de las demás (el badge cuenta solo las activas)
+  const activeAlerts = alerts.filter((a) => a.branchId === active?.id)
+  const otherAlerts = alerts.filter((a) => a.branchId !== active?.id)
+
+  // Solo para Cierre mensual: ver el total de todas las sucursales del dueño
+  const [allBranches, setAllBranches] = useState(false)
+
   return (
-    <BranchContext.Provider value={{ branches, active, setActive, alerts, reloadAlerts, reloadBranches }}>
+    <BranchContext.Provider value={{ branches, active, setActive, alerts, activeAlerts, otherAlerts, allBranches, setAllBranches, reloadAlerts, reloadBranches }}>
       {children}
     </BranchContext.Provider>
   )
