@@ -19,7 +19,8 @@ const MODES = [
 ]
 
 export default function Prices() {
-  const { branches, reloadAlerts } = useBranches()
+  const { branches, active, reloadAlerts } = useBranches()
+  const companyId = active?.companyId
   const toast = useToast()
   const navigate = useNavigate()
   const [products, setProducts] = useState([])
@@ -34,9 +35,9 @@ export default function Prices() {
     api.inflationLatest().then(setInflation).catch(() => setInflation(null))
   }, [])
 
-  // Productos con stock activo en alguna sucursal del dueño: son los que alcanza la actualización
+  // Productos con stock activo en alguna sucursal de la empresa activa: son los que alcanza la actualización
   const load = () =>
-    Promise.all(branches.map((b) => api.stock(b.id)))
+    Promise.all(branches.filter((b) => b.companyId === companyId).map((b) => api.stock(b.id)))
       .then((all) => {
         const byId = new Map()
         all.flat().forEach((i) => byId.set(i.productId, i))
@@ -45,7 +46,7 @@ export default function Prices() {
       .catch((e) => toast(e.message, 'err'))
   useEffect(() => {
     load()
-  }, [branches]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [branches, companyId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const options =
     mode === 'Individual' ? products.map((p) => ({ value: p.productId, label: `${p.name} — ${p.brand}` }))
@@ -72,7 +73,7 @@ export default function Prices() {
   const confirm = async () => {
     setBusy(true)
     try {
-      const n = await api.updatePrices({ mode, target: mode === 'All' ? null : selected, value: val })
+      const n = await api.updatePrices({ mode, target: mode === 'All' ? null : selected, value: val, companyId })
       setValue('')
       toast(`Se actualizaron ${n} ${n === 1 ? 'precio' : 'precios'}`)
       load()

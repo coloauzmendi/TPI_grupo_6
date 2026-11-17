@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Domain.Entities;
 
-namespace Infraestructure.Data
+namespace Infrastructure.Data
 {
     public class ApplicationContext : DbContext
     {
@@ -81,6 +81,13 @@ namespace Infraestructure.Data
                 entity.Property(p => p.Category).HasMaxLength(50).IsRequired();
                 entity.Property(p => p.Price).HasPrecision(10, 2);
                 entity.Property(p => p.Industry).HasConversion<string>();
+                entity.Property(p => p.IsActive).HasDefaultValue(true);
+
+                // Cada producto pertenece a una sola empresa
+                entity.HasOne<Company>()
+                    .WithMany()
+                    .HasForeignKey(p => p.CompanyId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_Products_Price", "Price >= 0"));
             });
@@ -97,7 +104,8 @@ namespace Infraestructure.Data
 
                 entity.HasOne<Product>()
                     .WithMany()
-                    .HasForeignKey(s => s.ProductId);
+                    .HasForeignKey(s => s.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.ToTable(t =>
                 {
@@ -134,7 +142,8 @@ namespace Infraestructure.Data
 
                 entity.HasOne<Product>()
                     .WithMany()
-                    .HasForeignKey(d => d.ProductId);
+                    .HasForeignKey(d => d.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_SaleDetails_Quantity", "Quantity > 0"));
             });
@@ -168,7 +177,8 @@ namespace Infraestructure.Data
 
                 entity.HasOne<Product>()
                     .WithMany()
-                    .HasForeignKey(d => d.ProductId);
+                    .HasForeignKey(d => d.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 entity.ToTable(t =>
                 {

@@ -29,7 +29,7 @@ export default function App() {
       <Route element={<AppLayout />}>
         <Route index element={<Home />} />
         <Route path="stock" element={<Stock />} />
-        <Route path="ventas" element={<OnlyFor role="Employee"><Sales /></OnlyFor>} />
+        <Route path="ventas" element={<Sales />} />
         <Route path="compras" element={<OnlyFor role="Owner"><Purchases /></OnlyFor>} />
         <Route path="precios" element={<OnlyFor role="Owner"><Prices /></OnlyFor>} />
         <Route path="ranking" element={<OnlyFor role="Owner"><Ranking /></OnlyFor>} />

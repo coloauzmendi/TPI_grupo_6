@@ -20,17 +20,18 @@ export const api = {
   stockAlerts: () => request('GET', '/api/me/stock-alerts'),
 
   // Productos y stock
-  products: () => request('GET', '/api/product'),
+  products: (companyId) => request('GET', `/api/product?${qs({ companyId })}`),
   createProduct: (p) => request('POST', '/api/product', p),
   updateProduct: (id, p) => request('PUT', `/api/product/${id}`, p),
   updatePrices: (data) => request('POST', '/api/product/prices', data),
-  stock: (branchId) => request('GET', `/api/branch/${branchId}/stock`),
+  stock: (branchId, includeInactive) => request('GET', `/api/branch/${branchId}/stock${includeInactive ? '?includeInactive=true' : ''}`),
   createStock: (branchId, s) => request('POST', `/api/branch/${branchId}/stock`, s),
   updateStock: (branchId, productId, s) => request('PUT', `/api/branch/${branchId}/stock/${productId}`, s),
   deleteStock: (branchId, productId) => request('DELETE', `/api/branch/${branchId}/stock/${productId}`),
 
   // Ventas y compras
   createSale: (branchId, items) => request('POST', `/api/branch/${branchId}/sales`, { items }),
+  cancelSale: (branchId, saleId) => request('DELETE', `/api/branch/${branchId}/sales/${saleId}`),
   createPurchase: (branchId, data) => request('POST', `/api/branch/${branchId}/purchases`, data),
 
   // Empresas y sucursales

@@ -1,6 +1,5 @@
 ﻿using Application.Interfaces;
-using Application.Services;
-using Domain.Entities;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -12,56 +11,39 @@ namespace web.Controllers;
 [Route("api/[controller]")]
 public class BranchController : ControllerBase
 {
-    private readonly IBranchRepository _branchRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly AccessService _accessService;
+    private readonly IBranchService _branchService;
 
-    public BranchController(
-        IBranchRepository branchRepository,
-        IUserRepository userRepository,
-        AccessService accessService)
+    public BranchController(IBranchService branchService)
     {
-        _branchRepository = branchRepository;
-        _userRepository = userRepository;
-        _accessService = accessService;
+        _branchService = branchService;
     }
 
     // Dueño: las sucursales de sus empresas. Empleado: solo la suya.
     [HttpGet]
-    public ActionResult<List<Branch>> GetAll()
+    public ActionResult<List<BranchResponse>> GetAll()
     {
-        return Ok(_accessService.GetBranches(User.GetCuit()));
+        return Ok(_branchService.GetAll(User.GetCuit()));
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Branch> GetById(Guid id)
+    public ActionResult<BranchResponse> GetById(Guid id)
     {
-        return Ok(_accessService.EnsureBranchAccess(User.GetCuit(), id));
+        return Ok(_branchService.GetById(User.GetCuit(), id));
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPost]
-    public ActionResult<Branch> Create(Branch newBranch)
+    public ActionResult<BranchResponse> Create(BranchRequest request)
     {
-        _accessService.EnsureCompanyOwner(User.GetCuit(), newBranch.CompanyId);
-
-        var created = _branchRepository.Create(newBranch);
+        BranchResponse created = _branchService.Create(User.GetCuit(), request);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
     [Authorize(Roles = "Owner")]
     [HttpPut("{id}")]
-    public IActionResult Update(Guid id, Branch updatedBranch)
+    public IActionResult Update(Guid id, BranchRequest request)
     {
-        var branch = _accessService.EnsureBranchAccess(User.GetCuit(), id);
-        _accessService.EnsureCompanyOwner(User.GetCuit(), updatedBranch.CompanyId);
-
-        branch.Locality = updatedBranch.Locality;
-        branch.Address = updatedBranch.Address;
-        branch.Industry = updatedBranch.Industry;
-        branch.CompanyId = updatedBranch.CompanyId;
-        _branchRepository.Update(branch);
-
+        _branchService.Update(User.GetCuit(), id, request);
         return NoContent();
     }
 
@@ -70,12 +52,7 @@ public class BranchController : ControllerBase
     [HttpDelete("{id}")]
     public IActionResult Delete(Guid id)
     {
-        var branch = _accessService.EnsureBranchAccess(User.GetCuit(), id);
-
-        foreach (var employee in _userRepository.GetByBranch(id))
-            _userRepository.Delete(employee);
-
-        _branchRepository.Delete(branch);
+        _branchService.Delete(User.GetCuit(), id);
         return NoContent();
     }
 }

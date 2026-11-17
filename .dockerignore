@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+.git/
+.github/
+.vs/
+.vscode/
+frontend/
+infra/
+tests/
+*.md
+Dockerfile
+.dockerignore

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api/endpoints'
 import { useAuth } from '../context/AuthContext'
 import { useBranches } from '../context/BranchContext'
+import { useToast } from '../context/ToastContext'
+import { ConfirmModal } from '../components/Modal'
 import { C, Icon, card, h1, subtitle } from '../components/ui'
 import { branchLabel, greeting, longDate, money, num, timeShort } from '../utils/format'
 
@@ -14,14 +16,34 @@ const EMPLOYEE_TILES = [['/ventas', 'point_of_sale', 'Registrar venta', C.green]
 
 export default function Home() {
   const { me, isOwner } = useAuth()
-  const { branches, alerts, setActive } = useBranches()
+  const { branches, alerts, setActive, reloadAlerts } = useBranches()
+  const toast = useToast()
   const navigate = useNavigate()
   const [today, setToday] = useState(null)
+  const [cancelling, setCancelling] = useState(null)
+  const [busy, setBusy] = useState(false)
   const now = new Date()
 
+  const loadToday = () => api.today().then(setToday).catch(() => {})
+
   useEffect(() => {
-    api.today().then(setToday).catch(() => {})
+    loadToday()
   }, [])
+
+  const cancelSale = async () => {
+    setBusy(true)
+    try {
+      await api.cancelSale(cancelling.branchId, cancelling.id)
+      setCancelling(null)
+      toast('Venta anulada')
+      loadToday()
+      reloadAlerts().catch(() => {})
+    } catch (e) {
+      toast(e.message, 'err')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const kpi = today?.kpi ?? { sales: 0, units: 0, total: 0 }
   const kpis = isOwner
@@ -117,15 +139,36 @@ export default function Home() {
           <h3 style={{ margin: '0 0 10px', fontSize: 18 }}>Tus últimas ventas de hoy</h3>
           {(today?.recent ?? []).length === 0 && <div style={{ color: '#667085', fontSize: 15 }}>Todavía no registraste ventas hoy.</div>}
           {(today?.recent ?? []).map((s) => (
-            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderTop: '1px solid #eef0f4', fontSize: 15 }}>
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 0', borderTop: '1px solid #eef0f4', fontSize: 15 }}>
               <span>
                 <strong>{s.code}</strong>{' '}
                 <span style={{ color: '#667085' }}>· {timeShort(new Date(s.date))} · {s.items.reduce((a, i) => a + i.quantity, 0)} u.</span>
               </span>
-              <strong>{money(s.total)}</strong>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <strong>{money(s.total)}</strong>
+                <button
+                  onClick={() => setCancelling(s)}
+                  className="hv-link"
+                  style={{ height: 32, padding: '0 12px', border: '1px solid #f1c4c4', borderRadius: 8, background: '#fff', color: '#b42323', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Anular
+                </button>
+              </span>
             </div>
           ))}
         </div>
+      )}
+
+      {cancelling && (
+        <ConfirmModal
+          title="Anular venta"
+          text={`¿Anular la venta ${cancelling.code} por ${money(cancelling.total)}? El stock de sus productos vuelve a la sucursal.`}
+          warn="La anulación no se puede deshacer."
+          actionLabel="Anular venta"
+          busy={busy}
+          onConfirm={cancelSale}
+          onClose={() => setCancelling(null)}
+        />
       )}
     </div>
   )

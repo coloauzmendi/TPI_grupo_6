@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5015'
+import { API_BASE_URL } from './config'
 
 let token = null
 let onUnauthorized = null
@@ -35,7 +35,7 @@ async function readError(res) {
 export async function request(method, path, body) {
   let res
   try {
-    res = await fetch(BASE_URL + path, {
+    res = await fetch(API_BASE_URL + path, {
       method,
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),

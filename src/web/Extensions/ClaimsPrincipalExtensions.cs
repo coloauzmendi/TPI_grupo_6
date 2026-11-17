@@ -11,4 +11,10 @@ public static class ClaimsPrincipalExtensions
         return principal.FindFirst("sub")?.Value
             ?? throw new UnauthorizedException("El token no contiene el CUIT del usuario.");
     }
+
+    // Igual que GetCuit, pero null si la petición no viene autenticada (endpoints anónimos)
+    public static string? GetCuitOrNull(this ClaimsPrincipal principal)
+    {
+        return principal.Identity?.IsAuthenticated == true ? principal.GetCuit() : null;
+    }
 }

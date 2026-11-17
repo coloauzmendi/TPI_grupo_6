@@ -2,16 +2,6 @@
 
 namespace Application.Models
 {
-    public class BranchResponse
-    {
-        public Guid Id { get; set; }
-        public string Locality { get; set; } = string.Empty;
-        public string Address { get; set; } = string.Empty;
-        public Industry Industry { get; set; }
-        public Guid CompanyId { get; set; }
-        public string CompanyName { get; set; } = string.Empty;
-    }
-
     public class MeResponse
     {
         public string Cuit { get; set; } = string.Empty;

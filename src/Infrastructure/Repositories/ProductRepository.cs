@@ -1,40 +1,40 @@
 ﻿using Application.Interfaces;
 using Domain.Entities;
-using Infraestructure.Data;
+using Infrastructure.Data;
 
-namespace Infraestructure.Repositories
+namespace Infrastructure.Repositories
 {
-    public class ProductRepository : IProductRepository
+    public class ProductRepository : Repository<Product>, IProductRepository
     {
-        private readonly ApplicationContext _context;
-
-        public ProductRepository(ApplicationContext context)
+        public ProductRepository(ApplicationContext context) : base(context)
         {
-            _context = context;
         }
 
         public List<Product> GetAll()
         {
+            return _context.Products.Where(x => x.IsActive).ToList();
+        }
+
+        // Incluye los dados de baja para resolver nombres en ventas y compras anteriores
+        public List<Product> GetAllIncludingInactive()
+        {
             return _context.Products.ToList();
+        }
+
+        public List<Product> GetByCompanies(List<Guid> companyIds)
+        {
+            return _context.Products.Where(x => x.IsActive && companyIds.Contains(x.CompanyId)).ToList();
+        }
+
+        // Incluye los dados de baja para poder reactivarlos en el alta
+        public List<Product> GetByCompanyIncludingInactive(Guid companyId)
+        {
+            return _context.Products.Where(x => x.CompanyId == companyId).ToList();
         }
 
         public Product? GetById(Guid id)
         {
-            return _context.Products.FirstOrDefault(x => x.Id == id);
-        }
-
-        public Product Create(Product newProduct)
-        {
-            _context.Products.Add(newProduct);
-            _context.SaveChanges();
-
-            return newProduct;
-        }
-
-        public void Update(Product updatedProduct)
-        {
-            _context.Products.Update(updatedProduct);
-            _context.SaveChanges();
+            return _context.Products.FirstOrDefault(x => x.Id == id && x.IsActive);
         }
 
         // Actualiza varios productos en una sola transacción (actualización masiva de precios)
@@ -44,10 +44,14 @@ namespace Infraestructure.Repositories
             _context.SaveChanges();
         }
 
-        public void Delete(Product productToDelete)
+        public void Delete(Product productToDelete, List<BranchStock> stocksToDelete)
         {
-            _context.Products.Remove(productToDelete);
-            _context.SaveChanges();
+            productToDelete.IsActive = false;
+            stocksToDelete.ForEach(s => s.IsActive = false);
+
+            _context.Products.Update(productToDelete);
+            _context.BranchStocks.UpdateRange(stocksToDelete);
+            _context.SaveChanges(); // una sola transacción: producto + stock
         }
     }
 }

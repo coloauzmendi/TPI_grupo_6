@@ -1,5 +1,5 @@
-﻿using Application.Models;
-using Application.Services;
+﻿using Application.Interfaces;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using web.Extensions;
@@ -11,9 +11,9 @@ namespace web.Controllers;
 [Route("api/branch/{branchId}/purchases")]
 public class PurchaseController : ControllerBase
 {
-    private readonly PurchaseService _purchaseService;
+    private readonly IPurchaseService _purchaseService;
 
-    public PurchaseController(PurchaseService purchaseService)
+    public PurchaseController(IPurchaseService purchaseService)
     {
         _purchaseService = purchaseService;
     }
@@ -22,6 +22,6 @@ public class PurchaseController : ControllerBase
     [HttpPost]
     public ActionResult<PurchaseResponse> Create(Guid branchId, PurchaseRequest request)
     {
-        return Ok(_purchaseService.Create(User.GetCuit(), branchId, request));
+        return StatusCode(StatusCodes.Status201Created, _purchaseService.Create(User.GetCuit(), branchId, request));
     }
 }

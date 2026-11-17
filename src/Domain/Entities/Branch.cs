@@ -1,9 +1,9 @@
-﻿using System.Text.Json.Serialization;
-using Domain.Enums;
+﻿using Domain.Enums;
+using Domain.Interfaces;
 
 namespace Domain.Entities
 {
-    public class Branch
+    public class Branch : ISoftDelete
     {
         public Guid Id { get; set; }
 
@@ -16,7 +16,6 @@ namespace Domain.Entities
         public Guid CompanyId { get; set; }
 
         // Baja lógica
-        [JsonIgnore]
         public bool IsActive { get; set; } = true;
     }
 }
